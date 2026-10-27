@@ -263,6 +263,11 @@ bool tailspin_kdbg_filter_subclass_set(void *opaque_config, const char *value,
     config->state.filter = strdup(value);
     return config->state.filter != NULL;
 }
+bool tailspin_kdbg_filter_subclass_get(void *opaque_config, const char *value) {
+    struct tailspin_config *config = opaque_config;
+    return config != NULL && value != NULL && config->state.filter != NULL &&
+           strcmp(config->state.filter, value) == 0;
+}
 const char *tailspin_kdbg_filter_class_get(void *config, const char *value) {
     (void)config;
     return value;
@@ -315,6 +320,19 @@ bool tailspin_sampling_option_set(void *opaque_config, const char *value,
     free(config->state.sampling);
     config->state.sampling = strdup(value);
     return config->state.sampling != NULL;
+}
+
+bool tailspin_currently_running(void) {
+    tailspin_state_t state;
+    bool running;
+    tailspin_state_init(&state);
+    if (tailspin_state_load(&state) != 0) {
+        tailspin_state_free(&state);
+        return false;
+    }
+    running = state.enabled != 0;
+    tailspin_state_free(&state);
+    return running;
 }
 
 bool tailspin_dump_output_with_options_sync(int output_fd,

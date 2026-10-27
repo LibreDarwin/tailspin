@@ -159,7 +159,6 @@ TAILSPIN_UNIMPLEMENTED(tailspin_augment_output_with_request_id);
 TAILSPIN_UNIMPLEMENTED(tailspin_compress_file);
 TAILSPIN_UNIMPLEMENTED(tailspin_config_create_with_config);
 TAILSPIN_UNIMPLEMENTED(tailspin_cputrace_handle_deinit);
-TAILSPIN_UNIMPLEMENTED(tailspin_currently_running);
 TAILSPIN_UNIMPLEMENTED(tailspin_get_cputrace_handle);
 TAILSPIN_UNIMPLEMENTED(tailspin_parse_stackshot_chunk);
 TAILSPIN_UNIMPLEMENTED(tailspin_pause_cputrace);
