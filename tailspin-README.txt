@@ -65,3 +65,8 @@ References
     XNU bsd/sys/stackshot.h
     XNU libkdd/kcdata.h
     ktrace-abi.md
+
+The recovered high-confidence libtailspin function-pointer declarations are
+kept in `Sources/common/tailspin_private_abi.h`. The header intentionally does
+not declare the uncertain standard-chunk save routine or any private object
+layouts.
