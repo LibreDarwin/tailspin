@@ -14,6 +14,8 @@ struct tailspin_config {
     tailspin_state_t state;
 };
 
+void tailspin_config_free(void *opaque_config);
+
 static const unsigned long long default_buffer_size = 32;
 static const unsigned long long default_oncore_period = 1000000;
 static const unsigned long long default_full_period = 10000000;
@@ -41,6 +43,22 @@ void *tailspin_config_create_with_current_state(void) {
 
 void *tailspin_config_create_with_default_config(void) {
     return config_create(0);
+}
+
+void *tailspin_make_ondisk_config(const char *path, bool create) {
+    struct tailspin_config *config;
+    if (path == NULL)
+        return NULL;
+    config = config_create(0);
+    if (config == NULL)
+        return NULL;
+    if (tailspin_state_load_path(&config->state, path) != 0) {
+        if (!create || errno != ENOENT) {
+            tailspin_config_free(config);
+            return NULL;
+        }
+    }
+    return config;
 }
 
 void tailspin_config_free(void *opaque_config) {

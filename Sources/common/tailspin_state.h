@@ -19,6 +19,7 @@ typedef struct {
 void tailspin_state_init(tailspin_state_t *state);
 void tailspin_state_free(tailspin_state_t *state);
 int tailspin_state_load(tailspin_state_t *state);
+int tailspin_state_load_path(tailspin_state_t *state, const char *path);
 int tailspin_state_save(const tailspin_state_t *state);
 void tailspin_state_reset(tailspin_state_t *state, const char *field);
 const char *tailspin_state_path(void);

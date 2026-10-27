@@ -81,8 +81,8 @@ static int parse_line(tailspin_state_t *state, char *line) {
     return 0;
 }
 
-int tailspin_state_load(tailspin_state_t *state) {
-    FILE *file = fopen(tailspin_state_path(), "r");
+int tailspin_state_load_path(tailspin_state_t *state, const char *path) {
+    FILE *file = fopen(path, "r");
     char line[4096];
     if (file == NULL)
         return errno == ENOENT ? 0 : -1;
@@ -100,6 +100,10 @@ int tailspin_state_load(tailspin_state_t *state) {
         return -1;
     }
     return 0;
+}
+
+int tailspin_state_load(tailspin_state_t *state) {
+    return tailspin_state_load_path(state, tailspin_state_path());
 }
 
 int tailspin_state_save(const tailspin_state_t *state) {
