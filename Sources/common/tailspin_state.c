@@ -25,10 +25,24 @@ static void replace_string(char **slot, const char *value) {
 }
 
 static int valid_state(const tailspin_state_t *state) {
-    return state->buffer_size_mb != 0 &&
+    return state != NULL && state->filter != NULL && state->sampling != NULL &&
+           state->buffer_size_mb != 0 &&
            (state->oncore_period_ns == 0 || state->oncore_period_ns >= 1000000) &&
            (state->full_period_ns == 0 || state->full_period_ns >= 10000000) &&
            (state->cputrace == 0 || state->cputrace == 1);
+}
+
+static int parse_unsigned(const char *value, unsigned long long *result) {
+    char *end;
+    unsigned long long parsed;
+    if (value == NULL || result == NULL || value[0] == '\0')
+        return -1;
+    errno = 0;
+    parsed = strtoull(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0')
+        return -1;
+    *result = parsed;
+    return 0;
 }
 
 const char *tailspin_state_path(void) {
@@ -54,18 +68,31 @@ void tailspin_state_free(tailspin_state_t *state) {
 static int parse_line(tailspin_state_t *state, char *line) {
     char *equals = strchr(line, '=');
     char *value;
+    unsigned long long parsed;
     if (equals == NULL)
         return 0;
     *equals = '\0';
     value = equals + 1;
-    if (strcmp(line, "enabled") == 0)
-        state->enabled = atoi(value) != 0;
-    else if (strcmp(line, "buffer-size-mb") == 0)
-        state->buffer_size_mb = strtoull(value, NULL, 10);
-    else if (strcmp(line, "oncore-sampling-period") == 0)
-        state->oncore_period_ns = strtoull(value, NULL, 10);
-    else if (strcmp(line, "full-system-sampling-period") == 0)
-        state->full_period_ns = strtoull(value, NULL, 10);
+    if (strcmp(line, "enabled") == 0) {
+        if (strcmp(value, "0") == 0)
+            state->enabled = 0;
+        else if (strcmp(value, "1") == 0)
+            state->enabled = 1;
+        else
+            return -1;
+    } else if (strcmp(line, "buffer-size-mb") == 0) {
+        if (parse_unsigned(value, &parsed) != 0)
+            return -1;
+        state->buffer_size_mb = parsed;
+    } else if (strcmp(line, "oncore-sampling-period") == 0) {
+        if (parse_unsigned(value, &parsed) != 0)
+            return -1;
+        state->oncore_period_ns = parsed;
+    } else if (strcmp(line, "full-system-sampling-period") == 0) {
+        if (parse_unsigned(value, &parsed) != 0)
+            return -1;
+        state->full_period_ns = parsed;
+    }
     else if (strcmp(line, "cputrace") == 0) {
         if (strcmp(value, "0") == 0)
             state->cputrace = 0;
@@ -82,8 +109,13 @@ static int parse_line(tailspin_state_t *state, char *line) {
 }
 
 int tailspin_state_load_path(tailspin_state_t *state, const char *path) {
-    FILE *file = fopen(path, "r");
+    FILE *file;
     char line[4096];
+    if (state == NULL || path == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+    file = fopen(path, "r");
     if (file == NULL)
         return errno == ENOENT ? 0 : -1;
     while (fgets(line, sizeof(line), file) != NULL) {
@@ -111,6 +143,10 @@ int tailspin_state_save(const tailspin_state_t *state) {
     char *copy = strdup(path);
     char *slash;
     FILE *file;
+    if (!valid_state(state)) {
+        errno = EINVAL;
+        return -1;
+    }
     if (copy == NULL)
         return -1;
     slash = strrchr(copy, '/');
@@ -136,6 +172,8 @@ int tailspin_state_save(const tailspin_state_t *state) {
 }
 
 void tailspin_state_reset(tailspin_state_t *state, const char *field) {
+    if (state == NULL)
+        return;
     if (field == NULL) {
         int enabled = state->enabled;
         tailspin_state_free(state);
