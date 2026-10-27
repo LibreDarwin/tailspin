@@ -349,3 +349,18 @@ bool tailspin_dump_output(int output_fd, dispatch_queue_t queue,
                           tailspin_private_completion_t completion) {
     return tailspin_dump_output_with_options(output_fd, NULL, queue, completion);
 }
+
+void tailspin_augment_output(int output_fd, const char *path, dispatch_queue_t queue,
+                             tailspin_private_completion_t completion) {
+    (void)output_fd;
+    (void)path;
+    if (queue == NULL) {
+        if (completion != NULL)
+            completion(false);
+        return;
+    }
+    dispatch_async(queue, ^{
+        if (completion != NULL)
+            completion(false);
+    });
+}

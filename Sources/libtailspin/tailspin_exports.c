@@ -155,7 +155,6 @@ TAILSPIN_UNIMPLEMENTED(reinit_cputrace_live_recording_from_existing_session);
 TAILSPIN_UNIMPLEMENTED(serialize_cputrace_session);
 TAILSPIN_UNIMPLEMENTED(set_config_field_modifier);
 
-TAILSPIN_UNIMPLEMENTED(tailspin_augment_output);
 TAILSPIN_UNIMPLEMENTED(tailspin_augment_output_with_request_id);
 TAILSPIN_UNIMPLEMENTED(tailspin_compress_file);
 TAILSPIN_UNIMPLEMENTED(tailspin_config_create_with_config);
