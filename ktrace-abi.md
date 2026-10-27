@@ -158,6 +158,19 @@ native apply-config path; the observed data length is `0x2118` bytes. A
 dictionary-shaped configuration is a compatibility convenience in this
 reimplementation, not the native Apple wire representation.
 
+Native config buffer observations
+---------------------------------
+
+The daemon's apply routine receives a source configuration pointer in `rdi`
+and a destination buffer in `rsi`. The tasking-config branch calls
+`get_tailspin_tasking_config()`, then copies exactly `0x2118` bytes from the
+returned object into the destination before calling `tailspin_config_free`.
+The source object is inspected at byte offset `0x08` as a 32-bit flags field.
+Later, the resulting buffer is inspected at offset `0x20f0` as a byte state
+or enable field. No other field offsets are asserted here; the middle of the
+buffer contains additional profile, tasking, filter, and sampling data that
+still requires field-by-field tracing.
+
 Evidence commands
 -----------------
 
