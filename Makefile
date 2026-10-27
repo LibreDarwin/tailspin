@@ -46,7 +46,7 @@ test: all
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) info >/dev/null
 	@config=$$(mktemp -d); ! TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set oncore-sampling-period 999999
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set sampling-option add:test-option; TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set sampling-option remove:test-option
-	@file=$$(mktemp); printf '\\007\\130\\242\\131test' > $$file; $(TAILSPIN) stat $$file >/dev/null; rm -f $$file
+	@file=$$(mktemp); { printf '\007\130\242\131'; dd if=/dev/zero bs=1 count=12 2>/dev/null; printf '\355\130\221\361'; dd if=/dev/zero bs=1 count=12 2>/dev/null; } > $$file; $(TAILSPIN) stat $$file >/dev/null; rm -f $$file
 
 install: all
 	install -d $(DESTDIR)/usr/bin $(DESTDIR)/usr/libexec

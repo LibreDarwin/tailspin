@@ -164,8 +164,17 @@ static int command_save(int argc, char **argv) {
 }
 
 static int command_stat(int argc, char **argv) {
+    struct kcdata_item_header {
+        unsigned int type;
+        unsigned int size;
+        unsigned long long flags;
+    };
     struct stat file_stat;
-    unsigned int marker = 0;
+    unsigned char *buffer;
+    size_t offset = 0;
+    size_t item_count = 0;
+    int ended = 0;
+    unsigned int marker;
     FILE *file;
     int verbose = 0;
     int option;
@@ -183,19 +192,40 @@ static int command_stat(int argc, char **argv) {
                 errno == 0 ? "empty file" : strerror(errno));
         return 1;
     }
+    buffer = malloc((size_t)file_stat.st_size);
     file = fopen(path, "rb");
-    if (file == NULL || fread(&marker, sizeof(marker), 1, file) != 1) {
+    if (buffer == NULL || file == NULL || fread(buffer, 1, (size_t)file_stat.st_size, file) != (size_t)file_stat.st_size) {
         if (file != NULL) fclose(file);
+        free(buffer);
         fprintf(stderr, "tailspin: unable to read %s\n", path);
         return 1;
     }
     fclose(file);
+    marker = *(unsigned int *)buffer;
+    while (offset + sizeof(struct kcdata_item_header) <= (size_t)file_stat.st_size) {
+        struct kcdata_item_header *item = (struct kcdata_item_header *)(buffer + offset);
+        size_t item_size = sizeof(*item) + item->size;
+        size_t aligned_size = (item_size + 15) & ~((size_t)15);
+        if (item->type == 0xf19158edU) {
+            ended = item->size == 0;
+            break;
+        }
+        if (aligned_size < item_size || offset + aligned_size > (size_t)file_stat.st_size) {
+            free(buffer);
+            fprintf(stderr, "tailspin: malformed KCData item in %s\n", path);
+            return 1;
+        }
+        item_count++;
+        offset += aligned_size;
+    }
+    free(buffer);
     printf("File: %s\nSize: %lld bytes\nFormat: %s\n",
            path, (long long)file_stat.st_size,
            marker == 0x59a25807U ? "KCData stackshot" : "unknown");
     if (verbose)
-        printf("Header marker: 0x%08x\n", marker);
-    return marker == 0x59a25807U ? 0 : 1;
+        printf("Header marker: 0x%08x\nItems: %zu\nEnd marker: %s\n", marker,
+               item_count, ended ? "present" : "missing");
+    return marker == 0x59a25807U && ended ? 0 : 1;
 }
 
 int main(int argc, char **argv) {
