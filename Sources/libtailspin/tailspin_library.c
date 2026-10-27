@@ -209,6 +209,96 @@ bool tailspin_cputrace_enabled_set_with_options(void *opaque_config, bool enable
     return true;
 }
 
+const char *tailspin_kdbg_filter_get_default(void) { return "ALL"; }
+const char *tailspin_kdbg_filter_copy_description(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config == NULL || config->state.filter == NULL ? NULL : strdup(config->state.filter);
+}
+bool tailspin_kdbg_filter_is_default(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config != NULL && config->state.filter != NULL &&
+           strcmp(config->state.filter, "ALL") == 0;
+}
+void tailspin_kdbg_filter_reset(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return;
+    free(config->state.filter);
+    config->state.filter = strdup("ALL");
+}
+bool tailspin_kdbg_filter_clear(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return false;
+    free(config->state.filter);
+    config->state.filter = strdup("");
+    return config->state.filter != NULL;
+}
+bool tailspin_kdbg_filter_subclass_set(void *opaque_config, const char *value,
+                                       bool enabled) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL || value == NULL || value[0] == '\0')
+        return false;
+    if (!enabled)
+        return true;
+    free(config->state.filter);
+    config->state.filter = strdup(value);
+    return config->state.filter != NULL;
+}
+const char *tailspin_kdbg_filter_class_get(void *config, const char *value) {
+    (void)config;
+    return value;
+}
+const char *tailspin_kdbg_filter_class_get_partial(void *config, const char *value) {
+    (void)config;
+    return value;
+}
+bool tailspin_kdbg_filter_class_set(void *config, const char *value, bool enabled) {
+    return tailspin_kdbg_filter_subclass_set(config, value, enabled);
+}
+
+const char *tailspin_sampling_options_get_default(void) {
+    return "cswitch-sampling,syscall-sampling,vmfault-sampling";
+}
+const char *tailspin_sampling_option_get(void *opaque_config, const char *value) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return NULL;
+    return value == NULL ? config->state.sampling :
+           strstr(config->state.sampling, value) != NULL ? value : NULL;
+}
+bool tailspin_sampling_options_is_default(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config != NULL && config->state.sampling != NULL &&
+           strcmp(config->state.sampling, tailspin_sampling_options_get_default()) == 0;
+}
+void tailspin_sampling_options_reset(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return;
+    free(config->state.sampling);
+    config->state.sampling = strdup(tailspin_sampling_options_get_default());
+}
+bool tailspin_sampling_options_clear(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return false;
+    free(config->state.sampling);
+    config->state.sampling = strdup("");
+    return config->state.sampling != NULL;
+}
+bool tailspin_sampling_option_set(void *opaque_config, const char *value,
+                                  bool enabled) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL || value == NULL || value[0] == '\0')
+        return false;
+    if (!enabled)
+        return true;
+    free(config->state.sampling);
+    config->state.sampling = strdup(value);
+    return config->state.sampling != NULL;
+}
+
 bool tailspin_dump_output_with_options_sync(int output_fd,
                                             tailspin_private_options_t options) {
     uint64_t size = 0;
