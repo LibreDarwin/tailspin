@@ -1,0 +1,209 @@
+/* Copyright (C) 2026, LibreDarwin */
+/* SPDX-License-Identifier: BSD-3-Clause */
+
+#include "../common/tailspin_private_abi.h"
+#include "../common/tailspin_state.h"
+
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct tailspin_config {
+    tailspin_state_t state;
+};
+
+static const unsigned long long default_buffer_size = 32;
+static const unsigned long long default_oncore_period = 1000000;
+static const unsigned long long default_full_period = 10000000;
+
+static struct tailspin_config *config_create(int use_current_state) {
+    struct tailspin_config *config = calloc(1, sizeof(*config));
+    if (config == NULL)
+        return NULL;
+    tailspin_state_init(&config->state);
+    if (use_current_state && tailspin_state_load(&config->state) != 0) {
+        tailspin_state_free(&config->state);
+        free(config);
+        return NULL;
+    }
+    return config;
+}
+
+void *tailspin_config_create_new(void) {
+    return config_create(0);
+}
+
+void *tailspin_config_create_with_current_state(void) {
+    return config_create(1);
+}
+
+void *tailspin_config_create_with_default_config(void) {
+    return config_create(0);
+}
+
+void tailspin_config_free(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return;
+    tailspin_state_free(&config->state);
+    free(config);
+}
+
+static int config_apply_state(struct tailspin_config *config) {
+    if (config == NULL || config->state.buffer_size_mb == 0 ||
+        (config->state.oncore_period_ns != 0 &&
+         config->state.oncore_period_ns < default_oncore_period) ||
+        (config->state.full_period_ns != 0 &&
+         config->state.full_period_ns < default_full_period)) {
+        errno = EINVAL;
+        return -1;
+    }
+    return tailspin_state_save(&config->state);
+}
+
+void tailspin_config_apply_sync(void *opaque_config) {
+    (void)config_apply_state(opaque_config);
+}
+
+void tailspin_config_apply(void *opaque_config, dispatch_queue_t queue,
+                           tailspin_private_completion_t completion) {
+    struct tailspin_config *config = opaque_config;
+    if (queue == NULL) {
+        if (completion != NULL)
+            completion(config_apply_state(config) == 0);
+        return;
+    }
+    dispatch_async(queue, ^{
+        bool success = config_apply_state(config) == 0;
+        if (completion != NULL)
+            completion(success);
+    });
+}
+
+void *tailspin_config_copy_description(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    char *description;
+    if (config == NULL)
+        return NULL;
+    if (asprintf(&description,
+                 "enabled=%d buffer-size-mb=%llu oncore-sampling-period=%llu "
+                 "full-system-sampling-period=%llu cputrace=%d",
+                 config->state.enabled, config->state.buffer_size_mb,
+                 config->state.oncore_period_ns,
+                 config->state.full_period_ns, config->state.cputrace) < 0)
+        return NULL;
+    return description;
+}
+
+bool tailspin_enabled_get(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config != NULL && config->state.enabled;
+}
+
+bool tailspin_enabled_get_default(void) { return false; }
+bool tailspin_enabled_is_default(void *opaque_config) {
+    return !tailspin_enabled_get(opaque_config);
+}
+bool tailspin_enabled_set(void *opaque_config, bool enabled) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL)
+        return false;
+    config->state.enabled = enabled;
+    return true;
+}
+void tailspin_enabled_reset(void *opaque_config) {
+    (void)tailspin_enabled_set(opaque_config, false);
+}
+
+unsigned long long tailspin_buffer_size_get(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config == NULL ? 0 : config->state.buffer_size_mb;
+}
+unsigned long long tailspin_buffer_size_get_default(void) { return default_buffer_size; }
+bool tailspin_buffer_size_is_default(void *opaque_config) {
+    return tailspin_buffer_size_get(opaque_config) == default_buffer_size;
+}
+bool tailspin_buffer_size_set(void *opaque_config, unsigned long long value) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL || value == 0)
+        return false;
+    config->state.buffer_size_mb = value;
+    return true;
+}
+void tailspin_buffer_size_reset(void *opaque_config) {
+    (void)tailspin_buffer_size_set(opaque_config, default_buffer_size);
+}
+
+unsigned long long tailspin_oncore_sampling_period_get(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config == NULL ? 0 : config->state.oncore_period_ns;
+}
+unsigned long long tailspin_oncore_sampling_period_get_default(void) {
+    return default_oncore_period;
+}
+unsigned long long tailspin_min_oncore_sampling_period_allowed(void) {
+    return default_oncore_period;
+}
+bool tailspin_oncore_sampling_period_is_default(void *config) {
+    return tailspin_oncore_sampling_period_get(config) == default_oncore_period;
+}
+bool tailspin_oncore_sampling_period_set(void *opaque_config,
+                                         unsigned long long value) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL || (value != 0 && value < default_oncore_period))
+        return false;
+    config->state.oncore_period_ns = value;
+    return true;
+}
+void tailspin_oncore_sampling_period_reset(void *opaque_config) {
+    (void)tailspin_oncore_sampling_period_set(opaque_config, default_oncore_period);
+}
+
+unsigned long long tailspin_full_sampling_period_get(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config == NULL ? 0 : config->state.full_period_ns;
+}
+unsigned long long tailspin_full_sampling_period_get_default(void) {
+    return default_full_period;
+}
+unsigned long long tailspin_min_full_sampling_period_allowed(void) {
+    return default_full_period;
+}
+bool tailspin_full_sampling_period_is_default(void *config) {
+    return tailspin_full_sampling_period_get(config) == default_full_period;
+}
+bool tailspin_full_sampling_period_set(void *opaque_config,
+                                       unsigned long long value) {
+    struct tailspin_config *config = opaque_config;
+    if (config == NULL || (value != 0 && value < default_full_period))
+        return false;
+    config->state.full_period_ns = value;
+    return true;
+}
+void tailspin_full_sampling_period_reset(void *opaque_config) {
+    (void)tailspin_full_sampling_period_set(opaque_config, default_full_period);
+}
+
+bool tailspin_cputrace_enabled_get(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    return config != NULL && config->state.cputrace;
+}
+bool tailspin_cputrace_enabled_get_default(void) { return false; }
+bool tailspin_cputrace_enabled_is_default(void *config) {
+    return !tailspin_cputrace_enabled_get(config);
+}
+void tailspin_cputrace_enabled_reset(void *opaque_config) {
+    struct tailspin_config *config = opaque_config;
+    if (config != NULL)
+        config->state.cputrace = 0;
+}
+bool tailspin_cputrace_enabled_set_with_options(void *opaque_config, bool enabled,
+                                                unsigned long long options) {
+    struct tailspin_config *config = opaque_config;
+    (void)options;
+    if (config == NULL)
+        return false;
+    config->state.cputrace = enabled;
+    return true;
+}

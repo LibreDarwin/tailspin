@@ -12,9 +12,11 @@ OBJDIR := $(BUILD_DIR)/obj
 CFLAGS := $(OPT) -std=c11 -D_DARWIN_C_SOURCE -isysroot "$(SDK)" -I Sources/common -Wall -Wextra
 TAILSPIN := $(BUILD_DIR)/tailspin
 TAILSPIND := $(BUILD_DIR)/tailspind
+LIBTAILSPIN := $(BUILD_DIR)/libtailspin.dylib
 STATE_OBJ := $(OBJDIR)/tailspin_state.o $(OBJDIR)/tailspin_capture.o
+LIBTAILSPIN_OBJ := $(OBJDIR)/tailspin_library.o $(OBJDIR)/tailspin_state_pic.o
 
-all: $(TAILSPIN) $(TAILSPIND)
+all: $(TAILSPIN) $(TAILSPIND) $(LIBTAILSPIN)
 
 $(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ)
 	@mkdir -p $(BUILD_DIR)
@@ -23,6 +25,10 @@ $(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ)
 $(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o $(OBJDIR)/tailspin_state.o
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
+
+$(LIBTAILSPIN): $(LIBTAILSPIN_OBJ)
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -dynamiclib -install_name /usr/lib/libtailspin.dylib -o $@ $^
 
 $(OBJDIR)/tailspin_main.o: Sources/tailspin/main.c Sources/common/tailspin_state.h
 	@mkdir -p $(OBJDIR)
@@ -40,6 +46,14 @@ $(OBJDIR)/tailspin_capture.o: Sources/common/tailspin_capture.c Sources/common/t
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ Sources/common/tailspin_capture.c
 
+$(OBJDIR)/tailspin_library.o: Sources/libtailspin/tailspin_library.c Sources/libtailspin/tailspin_library.h Sources/common/tailspin_private_abi.h
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -fPIC -fblocks -c -o $@ Sources/libtailspin/tailspin_library.c
+
+$(OBJDIR)/tailspin_state_pic.o: Sources/common/tailspin_state.c Sources/common/tailspin_state.h
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -fPIC -c -o $@ Sources/common/tailspin_state.c
+
 test: all
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) enable
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set buffer-size 64
@@ -55,9 +69,10 @@ test: all
 	@$(TAILSPIN) set cputrace invalid >/dev/null 2>&1; test $$? -eq 64
 
 install: all
-	install -d $(DESTDIR)/usr/bin $(DESTDIR)/usr/libexec
+	install -d $(DESTDIR)/usr/bin $(DESTDIR)/usr/libexec $(DESTDIR)/usr/lib
 	install -m 0755 $(TAILSPIN) $(DESTDIR)/usr/bin/tailspin
 	install -m 0755 $(TAILSPIND) $(DESTDIR)/usr/libexec/tailspind
+	install -m 0755 $(LIBTAILSPIN) $(DESTDIR)/usr/lib/libtailspin.dylib
 	install -d $(DESTDIR)/Library/LaunchDaemons
 	install -m 0444 com.apple.tailspind.plist $(DESTDIR)/Library/LaunchDaemons/com.apple.tailspind.plist
 	install -d $(DESTDIR)/usr/share/man/man1 $(DESTDIR)/usr/share/man/man8
