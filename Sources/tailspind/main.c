@@ -53,6 +53,8 @@ static void handle_message(xpc_object_t object) {
     const char *command = NULL;
     int64_t request_type;
     int64_t dump_fd;
+    uint64_t request_timestamp;
+    uint64_t request_id;
     int result = ENOTSUP;
     if (xpc_get_type(object) != XPC_TYPE_DICTIONARY)
         return;
@@ -73,11 +75,15 @@ static void handle_message(xpc_object_t object) {
     } else {
         if (strcmp(command, "TAILSPIN_DUMP_OUTPUT") == 0 || request_type == 1) {
             dump_fd = xpc_dictionary_get_int64(object, "tailspin_dump_fd");
+            request_timestamp = xpc_dictionary_get_uint64(object, "tailspin_dump_request_timestamp");
+            request_id = xpc_dictionary_get_uint64(object, "request_id");
+            if (request_id != 0)
+                xpc_dictionary_set_uint64(reply, "request_id", request_id);
             if (dump_fd >= 0) {
                 char path[64];
                 uint64_t size = 0;
                 snprintf(path, sizeof(path), "/dev/fd/%lld", (long long)dump_fd);
-                result = tailspin_capture_stackshot(path, -1, 0, &size);
+                result = tailspin_capture_stackshot(path, -1, request_timestamp, &size);
                 xpc_dictionary_set_uint64(reply, "fileSizeBytes", size);
             } else {
                 result = EBADF;
