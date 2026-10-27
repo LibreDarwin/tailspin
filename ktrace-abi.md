@@ -171,6 +171,38 @@ or enable field. No other field offsets are asserted here; the middle of the
 buffer contains additional profile, tasking, filter, and sampling data that
 still requires field-by-field tracing.
 
+libtailspin CLI ABI
+-------------------
+
+Call sites in the installed `/usr/bin/tailspin` provide these higher-level
+signatures:
+
+    void *tailspin_config_create_with_current_state(void);
+    void *tailspin_config_create_with_default_config(void);
+    void tailspin_config_free(void *config);
+    void tailspin_config_apply(void *config,
+                               dispatch_queue_t queue,
+                               void (^completion)(bool success));
+
+The config constructors return Objective-C-managed opaque objects. The CLI
+passes the main dispatch queue and a stack block to `tailspin_config_apply`,
+then frees the config object. `tailspin_enabled_set(config, bool)` is called
+before apply for enable/disable operations.
+
+Output processing uses:
+
+    bool tailspin_dump_output_with_options_sync(int fd, id options);
+    void tailspin_augment_output(int fd, const char *path,
+                                 dispatch_queue_t queue,
+                                 void (^completion)(bool success));
+
+The synchronous dump call receives the output file descriptor and an options
+dictionary/object, returning its success flag in `al`. Augment opens the
+input file read/write, then passes its descriptor, path, main dispatch queue,
+and completion block to the library. The actual option setters mutate an
+opaque options object; their exported names mirror the CLI fields and are
+listed by `nm` in the system binary.
+
 Evidence commands
 -----------------
 
