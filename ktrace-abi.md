@@ -124,6 +124,23 @@ completion block, and processing state, but the call site alone does not
 establish stable source-level types for all positions. Its ABI should be
 wrapped only after matching the same call convention on the target OS.
 
+The `/usr/bin/tailspin save` call site gives this concrete register/stack
+map on x86_64:
+
+    rdi = output file descriptor (int)
+    rsi = opaque trace/session pointer
+    rdx = integer mode or option word
+    rcx = opaque dump-options object
+    r8  = null placeholder
+    r9  = dispatch queue
+    [rsp+0x00] = null placeholder
+    [rsp+0x08] = null placeholder
+    [rsp+0x10] = completion block
+
+The function's return value is ignored by the CLI; completion state is
+communicated through the captured block. The daemon uses the same ABI family
+with different timestamp and processing-state values in the opaque positions.
+
 ABI cautions
 ------------
 
