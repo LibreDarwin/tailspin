@@ -12,7 +12,7 @@ OBJDIR := $(BUILD_DIR)/obj
 CFLAGS := $(OPT) -std=c11 -D_DARWIN_C_SOURCE -isysroot "$(SDK)" -I Sources/common -Wall -Wextra
 TAILSPIN := $(BUILD_DIR)/tailspin
 TAILSPIND := $(BUILD_DIR)/tailspind
-STATE_OBJ := $(OBJDIR)/tailspin_state.o
+STATE_OBJ := $(OBJDIR)/tailspin_state.o $(OBJDIR)/tailspin_capture.o
 
 all: $(TAILSPIN) $(TAILSPIND)
 
@@ -32,9 +32,13 @@ $(OBJDIR)/tailspind_main.o: Sources/tailspind/main.c
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ Sources/tailspind/main.c
 
-$(STATE_OBJ): Sources/common/tailspin_state.c Sources/common/tailspin_state.h
+$(OBJDIR)/tailspin_state.o: Sources/common/tailspin_state.c Sources/common/tailspin_state.h
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ Sources/common/tailspin_state.c
+
+$(OBJDIR)/tailspin_capture.o: Sources/common/tailspin_capture.c Sources/common/tailspin_capture.h
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -c -o $@ Sources/common/tailspin_capture.c
 
 test: all
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) enable

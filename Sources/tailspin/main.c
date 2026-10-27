@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 
 #include "../common/tailspin_state.h"
+#include "../common/tailspin_capture.h"
 
 #include <errno.h>
 #include <getopt.h>
@@ -9,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
 
 static void usage(FILE *stream) {
     fprintf(stream, "usage: tailspin info|enable|disable|set|reset|save|augment|stat ...\n");
@@ -74,14 +74,14 @@ static int command_save(int argc, char **argv) {
         fprintf(stderr, "tailspin: save requires a path\n");
         return 64;
     }
-    FILE *file = fopen(path, "wb");
-    if (file == NULL) {
-        fprintf(stderr, "tailspin: unable to save %s: %s\n", path, strerror(errno));
+    uint64_t size = 0;
+    int result = tailspin_capture_stackshot(path, -1, 0, &size);
+    if (result != 0) {
+        fprintf(stderr, "tailspin: unable to save %s: %s\n", path, strerror(result));
         return 1;
     }
-    fprintf(file, "tailspin\nreason=%s\ntimestamp=%lld\n", reason ? reason : "", (long long)time(NULL));
-    fclose(file);
-    return 0;
+    (void)reason;
+    return size == 0 ? 1 : 0;
 }
 
 int main(int argc, char **argv) {
