@@ -173,6 +173,9 @@ static int command_stat(int argc, char **argv) {
     unsigned char *buffer;
     size_t offset = 0;
     size_t item_count = 0;
+    struct type_count { unsigned int type; size_t count; } type_counts[64];
+    size_t type_count_length = 0;
+    int sort_by_frequency = 0;
     int ended = 0;
     unsigned int marker;
     FILE *file;
@@ -182,7 +185,8 @@ static int command_stat(int argc, char **argv) {
     optind = 1;
     while ((option = getopt(argc, argv, "vs")) != -1) {
         if (option == 'v') verbose = 1;
-        else if (option != 's') return 64;
+        else if (option == 's') sort_by_frequency = 1;
+        else return 64;
     }
     if (optind >= argc)
         return 64;
@@ -216,6 +220,17 @@ static int command_stat(int argc, char **argv) {
             return 1;
         }
         item_count++;
+        size_t type_index;
+        for (type_index = 0; type_index < type_count_length; type_index++)
+            if (type_counts[type_index].type == item->type)
+                break;
+        if (type_index == type_count_length && type_count_length < 64) {
+            type_counts[type_index].type = item->type;
+            type_counts[type_index].count = 0;
+            type_count_length++;
+        }
+        if (type_index < type_count_length)
+            type_counts[type_index].count++;
         offset += aligned_size;
     }
     free(buffer);
@@ -225,6 +240,21 @@ static int command_stat(int argc, char **argv) {
     if (verbose)
         printf("Header marker: 0x%08x\nItems: %zu\nEnd marker: %s\n", marker,
                item_count, ended ? "present" : "missing");
+    if (sort_by_frequency) {
+        size_t i;
+        for (i = 0; i < type_count_length; i++) {
+            size_t j;
+            for (j = i + 1; j < type_count_length; j++) {
+                if (type_counts[j].count > type_counts[i].count) {
+                    struct type_count temporary = type_counts[i];
+                    type_counts[i] = type_counts[j];
+                    type_counts[j] = temporary;
+                }
+            }
+        }
+        for (i = 0; i < type_count_length; i++)
+            printf("0x%08x %zu\n", type_counts[i].type, type_counts[i].count);
+    }
     return marker == 0x59a25807U && ended ? 0 : 1;
 }
 
