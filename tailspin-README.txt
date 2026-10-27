@@ -13,6 +13,10 @@ entry points are implemented locally; symbols whose private on-disk or
 callback ABI has not yet been reconstructed are exported with explicit
 `ENOTSUP` behavior rather than silently producing invalid data.
 
+FD-based dump capture now uses the sibling LibreDarwin ktrace session layer
+for output setup, lifecycle, and flushing. Set `KTRACE_ROOT` when the ktrace
+checkout is not at `../ktrace`.
+
     tailspin info
     tailspin enable
     tailspin disable

@@ -4,29 +4,34 @@
 
 CONFIG ?= release
 SDK ?= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+KTRACE_ROOT ?= ../ktrace
+KTRACE_LIB := $(KTRACE_ROOT)/build/libktrace.a
 CC ?= clang
 -include make/$(CONFIG).mk
 
 BUILD_DIR := build/$(CONFIG)
 OBJDIR := $(BUILD_DIR)/obj
-CFLAGS := $(OPT) -std=c11 -D_DARWIN_C_SOURCE -isysroot "$(SDK)" -I Sources/common -Wall -Wextra
+CFLAGS := $(OPT) -std=c11 -D_DARWIN_C_SOURCE -isysroot "$(SDK)" -I Sources/common -I "$(KTRACE_ROOT)/Sources" -Wall -Wextra
 TAILSPIN := $(BUILD_DIR)/tailspin
 TAILSPIND := $(BUILD_DIR)/tailspind
 LIBTAILSPIN := $(BUILD_DIR)/libtailspin.dylib
 STATE_OBJ := $(OBJDIR)/tailspin_state.o $(OBJDIR)/tailspin_capture.o
 LIBTAILSPIN_OBJ := $(OBJDIR)/tailspin_library.o $(OBJDIR)/tailspin_exports.o $(OBJDIR)/tailspin_state_pic.o $(OBJDIR)/tailspin_capture_pic.o
 
-all: $(TAILSPIN) $(TAILSPIND) $(LIBTAILSPIN)
+all: $(KTRACE_LIB) $(TAILSPIN) $(TAILSPIND) $(LIBTAILSPIN)
 
-$(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ)
+$(KTRACE_LIB):
+	$(MAKE) -C "$(KTRACE_ROOT)" all
+
+$(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ) $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o $(OBJDIR)/tailspin_state.o
+$(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o $(OBJDIR)/tailspin_state.o $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(LIBTAILSPIN): $(LIBTAILSPIN_OBJ)
+$(LIBTAILSPIN): $(LIBTAILSPIN_OBJ) $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -dynamiclib -install_name /usr/lib/libtailspin.dylib -o $@ $^
 

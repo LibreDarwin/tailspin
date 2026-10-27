@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 
 #include "tailspin_capture.h"
+#include "../../../ktrace/Sources/ktrace.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -74,9 +75,28 @@ int tailspin_capture_stackshot(const char *path, int pid, uint64_t delta_timesta
 
 int tailspin_capture_stackshot_fd(int fd, int pid, uint64_t delta_timestamp,
                                   uint64_t *size_out) {
+    ktrace_session_t session;
+    int result;
     char path[64];
     if (fd < 0)
         return EBADF;
+    session = ktrace_session_create();
+    if (session == NULL)
+        return ENOMEM;
+    result = ktrace_start_writing_fd(session, 0, fd, 0, 0);
+    if (result == 0)
+        result = ktrace_start(session);
+    if (result != 0) {
+        ktrace_session_destroy(session);
+        return result;
+    }
     snprintf(path, sizeof(path), "/dev/fd/%d", fd);
-    return tailspin_capture_stackshot(path, pid, delta_timestamp, size_out);
+    result = tailspin_capture_stackshot(path, pid, delta_timestamp, size_out);
+    {
+        int end_result = ktrace_end(session, 1);
+        if (result == 0)
+            result = end_result;
+    }
+    ktrace_session_destroy(session);
+    return result;
 }
