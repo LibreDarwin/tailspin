@@ -163,6 +163,41 @@ static int command_save(int argc, char **argv) {
     return size == 0 ? 1 : 0;
 }
 
+static int command_stat(int argc, char **argv) {
+    struct stat file_stat;
+    unsigned int marker = 0;
+    FILE *file;
+    int verbose = 0;
+    int option;
+    const char *path;
+    optind = 1;
+    while ((option = getopt(argc, argv, "vs")) != -1) {
+        if (option == 'v') verbose = 1;
+        else if (option != 's') return 64;
+    }
+    if (optind >= argc)
+        return 64;
+    path = argv[optind];
+    if (stat(path, &file_stat) != 0 || file_stat.st_size == 0) {
+        fprintf(stderr, "tailspin: unable to inspect %s: %s\n", path,
+                errno == 0 ? "empty file" : strerror(errno));
+        return 1;
+    }
+    file = fopen(path, "rb");
+    if (file == NULL || fread(&marker, sizeof(marker), 1, file) != 1) {
+        if (file != NULL) fclose(file);
+        fprintf(stderr, "tailspin: unable to read %s\n", path);
+        return 1;
+    }
+    fclose(file);
+    printf("File: %s\nSize: %lld bytes\nFormat: %s\n",
+           path, (long long)file_stat.st_size,
+           marker == 0x59a25807U ? "KCData stackshot" : "unknown");
+    if (verbose)
+        printf("Header marker: 0x%08x\n", marker);
+    return marker == 0x59a25807U ? 0 : 1;
+}
+
 int main(int argc, char **argv) {
     tailspin_state_t state;
     int result = 0;
@@ -187,7 +222,9 @@ int main(int argc, char **argv) {
         result = save_state(&state);
     } else if (strcmp(argv[1], "save") == 0) {
         result = command_save(argc - 1, argv + 1);
-    } else if (strcmp(argv[1], "augment") == 0 || strcmp(argv[1], "stat") == 0) {
+    } else if (strcmp(argv[1], "stat") == 0) {
+        result = command_stat(argc - 1, argv + 1);
+    } else if (strcmp(argv[1], "augment") == 0) {
         if (argc < 3) result = 64;
         else result = 0;
     } else {
