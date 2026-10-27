@@ -14,7 +14,7 @@ TAILSPIN := $(BUILD_DIR)/tailspin
 TAILSPIND := $(BUILD_DIR)/tailspind
 LIBTAILSPIN := $(BUILD_DIR)/libtailspin.dylib
 STATE_OBJ := $(OBJDIR)/tailspin_state.o $(OBJDIR)/tailspin_capture.o
-LIBTAILSPIN_OBJ := $(OBJDIR)/tailspin_library.o $(OBJDIR)/tailspin_state_pic.o
+LIBTAILSPIN_OBJ := $(OBJDIR)/tailspin_library.o $(OBJDIR)/tailspin_exports.o $(OBJDIR)/tailspin_state_pic.o $(OBJDIR)/tailspin_capture_pic.o
 
 all: $(TAILSPIN) $(TAILSPIND) $(LIBTAILSPIN)
 
@@ -50,9 +50,17 @@ $(OBJDIR)/tailspin_library.o: Sources/libtailspin/tailspin_library.c Sources/lib
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -fPIC -fblocks -c -o $@ Sources/libtailspin/tailspin_library.c
 
+$(OBJDIR)/tailspin_exports.o: Sources/libtailspin/tailspin_exports.c
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -fPIC -c -o $@ Sources/libtailspin/tailspin_exports.c
+
 $(OBJDIR)/tailspin_state_pic.o: Sources/common/tailspin_state.c Sources/common/tailspin_state.h
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -fPIC -c -o $@ Sources/common/tailspin_state.c
+
+$(OBJDIR)/tailspin_capture_pic.o: Sources/common/tailspin_capture.c Sources/common/tailspin_capture.h
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -fPIC -c -o $@ Sources/common/tailspin_capture.c
 
 test: all
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) enable

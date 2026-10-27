@@ -34,7 +34,6 @@ int tailspin_capture_stackshot(const char *path, int pid, uint64_t delta_timesta
     tailspin_stackshot_config_t *config;
     void *buffer;
     uint32_t size;
-    FILE *file;
     int result;
 
     config = stackshot_config_create();
@@ -56,12 +55,12 @@ int tailspin_capture_stackshot(const char *path, int pid, uint64_t delta_timesta
     }
     buffer = stackshot_config_get_stackshot_buffer(config);
     size = stackshot_config_get_stackshot_size(config);
-    file = fopen(path, "wb");
-    if (file == NULL) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0)
         result = errno;
-    } else if (size == 0 || fwrite(buffer, 1, size, file) != size || fclose(file) != 0) {
+    else if (size == 0 || write(fd, buffer, size) != (ssize_t)size || close(fd) != 0)
         result = errno != 0 ? errno : EIO;
-    } else {
+    else {
         result = 0;
         if (size_out != NULL)
             *size_out = size;
@@ -71,4 +70,13 @@ int tailspin_capture_stackshot(const char *path, int pid, uint64_t delta_timesta
     stackshot_config_dealloc_buffer(config);
     stackshot_config_dealloc(config);
     return result;
+}
+
+int tailspin_capture_stackshot_fd(int fd, int pid, uint64_t delta_timestamp,
+                                  uint64_t *size_out) {
+    char path[64];
+    if (fd < 0)
+        return EBADF;
+    snprintf(path, sizeof(path), "/dev/fd/%d", fd);
+    return tailspin_capture_stackshot(path, pid, delta_timestamp, size_out);
 }

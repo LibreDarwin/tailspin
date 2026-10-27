@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 
 #include "../common/tailspin_private_abi.h"
+#include "../common/tailspin_capture.h"
 #include "../common/tailspin_state.h"
 
 #include <errno.h>
@@ -206,4 +207,37 @@ bool tailspin_cputrace_enabled_set_with_options(void *opaque_config, bool enable
         return false;
     config->state.cputrace = enabled;
     return true;
+}
+
+bool tailspin_dump_output_with_options_sync(int output_fd,
+                                            tailspin_private_options_t options) {
+    uint64_t size = 0;
+    (void)options;
+    return tailspin_capture_stackshot_fd(output_fd, -1, 0, &size) == 0 && size != 0;
+}
+
+bool tailspin_dump_output_sync(int output_fd) {
+    return tailspin_dump_output_with_options_sync(output_fd, NULL);
+}
+
+bool tailspin_dump_output_with_options(int output_fd,
+                                       tailspin_private_options_t options,
+                                       dispatch_queue_t queue,
+                                       tailspin_private_completion_t completion) {
+    bool success = tailspin_dump_output_with_options_sync(output_fd, options);
+    if (queue == NULL) {
+        if (completion != NULL)
+            completion(success);
+    } else {
+        dispatch_async(queue, ^{
+            if (completion != NULL)
+                completion(success);
+        });
+    }
+    return success;
+}
+
+bool tailspin_dump_output(int output_fd, dispatch_queue_t queue,
+                          tailspin_private_completion_t completion) {
+    return tailspin_dump_output_with_options(output_fd, NULL, queue, completion);
 }

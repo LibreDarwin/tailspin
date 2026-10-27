@@ -8,5 +8,7 @@
 
 int tailspin_capture_stackshot(const char *path, int pid, uint64_t delta_timestamp,
                                uint64_t *size_out);
+int tailspin_capture_stackshot_fd(int fd, int pid, uint64_t delta_timestamp,
+                                  uint64_t *size_out);
 
 #endif

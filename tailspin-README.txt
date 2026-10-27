@@ -8,6 +8,11 @@ tailspin continuously collects system sampling and selected kdebug data so a
 recent system history can be saved for diagnosis. The command-line interface
 is compatible with the Darwin tailspin tool:
 
+The build also produces `libtailspin.dylib`. Its configuration and dump
+entry points are implemented locally; symbols whose private on-disk or
+callback ABI has not yet been reconstructed are exported with explicit
+`ENOTSUP` behavior rather than silently producing invalid data.
+
     tailspin info
     tailspin enable
     tailspin disable
