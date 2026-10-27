@@ -43,7 +43,14 @@ static int apply_config(xpc_object_t object) {
         free(state.sampling);
         state.sampling = strdup(sampling);
     }
-    int result = tailspin_state_save(&state) == 0 ? 0 : EIO;
+    int result = 0;
+    if (state.buffer_size_mb == 0 ||
+        (state.oncore_period_ns != 0 && state.oncore_period_ns < 1000000) ||
+        (state.full_period_ns != 0 && state.full_period_ns < 10000000)) {
+        result = EINVAL;
+    } else if (tailspin_state_save(&state) != 0) {
+        result = EIO;
+    }
     tailspin_state_free(&state);
     return result;
 }
