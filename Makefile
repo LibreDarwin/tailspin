@@ -20,7 +20,7 @@ $(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(TAILSPIND): $(OBJDIR)/tailspind_main.o
+$(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
