@@ -117,7 +117,12 @@ static int command_set(tailspin_state_t *state, int argc, char **argv) {
         if (strcmp(argv[1], "disabled") == 0) state->full_period_ns = 0;
         else if (parse_period(argv[1], 10000000, &state->full_period_ns) != 0) return 64;
     } else if (strcmp(argv[0], "cputrace") == 0) {
-        state->cputrace = atoi(argv[1]) != 0;
+        if (strcmp(argv[1], "0") == 0)
+            state->cputrace = 0;
+        else if (strcmp(argv[1], "1") == 0)
+            state->cputrace = 1;
+        else
+            return 64;
     } else if (strcmp(argv[0], "ktrace-filter-descriptor") == 0) {
         if (strncmp(argv[1], "add:", 4) == 0 || strncmp(argv[1], "remove:", 7) == 0) {
             if (update_list(&state->filter, argv[1]) != 0) return 64;
