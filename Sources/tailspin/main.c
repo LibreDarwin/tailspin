@@ -23,6 +23,71 @@ static int save_state(tailspin_state_t *state) {
     return 0;
 }
 
+static int parse_period(const char *value, unsigned long long minimum,
+                        unsigned long long *result) {
+    char *end;
+    unsigned long long parsed;
+    errno = 0;
+    parsed = strtoull(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0' || parsed < minimum) {
+        fprintf(stderr, "tailspin: sampling period must be at least %llu ns\n", minimum);
+        return 64;
+    }
+    *result = parsed;
+    return 0;
+}
+
+static int update_list(char **list, const char *modifier) {
+    const char *value = modifier;
+    int remove = 0;
+    char *copy;
+    char *cursor;
+    char *token;
+    char *result;
+    size_t result_length = 0;
+    if (strncmp(modifier, "add:", 4) == 0) {
+        value += 4;
+    } else if (strncmp(modifier, "remove:", 7) == 0) {
+        remove = 1;
+        value += 7;
+    }
+    if (*value == '\0')
+        return 64;
+    copy = strdup(*list);
+    if (copy == NULL)
+        return 1;
+    result = calloc(1, strlen(copy) + strlen(value) + 2);
+    if (result == NULL) {
+        free(copy);
+        return 1;
+    }
+    cursor = copy;
+    while ((token = strsep(&cursor, ",")) != NULL) {
+        if (strcmp(token, value) == 0) {
+            if (remove)
+                continue;
+            free(result);
+            free(copy);
+            return 0;
+        }
+        if (*token == '\0')
+            continue;
+        if (result_length != 0)
+            result[result_length++] = ',';
+        strcpy(result + result_length, token);
+        result_length += strlen(token);
+    }
+    if (!remove) {
+        if (result_length != 0)
+            result[result_length++] = ',';
+        strcpy(result + result_length, value);
+    }
+    free(copy);
+    free(*list);
+    *list = result;
+    return 0;
+}
+
 static int command_info(const tailspin_state_t *state) {
     printf("Tailspin: %s\nBuffer size: %llu MB\nOn-core sampling period: %llu ns\n"
            "Full-system sampling period: %llu ns\nCPU trace: %s\n"
@@ -39,19 +104,33 @@ static int command_set(tailspin_state_t *state, int argc, char **argv) {
         return 64;
     }
     if (strcmp(argv[0], "buffer-size") == 0) {
-        state->buffer_size_mb = strtoull(argv[1], NULL, 10);
+        char *end;
+        errno = 0;
+        state->buffer_size_mb = strtoull(argv[1], &end, 10);
+        if (errno != 0 || end == argv[1] || *end != '\0' || state->buffer_size_mb == 0)
+            return 64;
     } else if (strcmp(argv[0], "oncore-sampling-period") == 0) {
-        state->oncore_period_ns = strcmp(argv[1], "disabled") == 0 ? 0 : strtoull(argv[1], NULL, 10);
+        if (strcmp(argv[1], "disabled") == 0) state->oncore_period_ns = 0;
+        else if (parse_period(argv[1], 1000000, &state->oncore_period_ns) != 0) return 64;
     } else if (strcmp(argv[0], "full-system-sampling-period") == 0) {
-        state->full_period_ns = strcmp(argv[1], "disabled") == 0 ? 0 : strtoull(argv[1], NULL, 10);
+        if (strcmp(argv[1], "disabled") == 0) state->full_period_ns = 0;
+        else if (parse_period(argv[1], 10000000, &state->full_period_ns) != 0) return 64;
     } else if (strcmp(argv[0], "cputrace") == 0) {
         state->cputrace = atoi(argv[1]) != 0;
     } else if (strcmp(argv[0], "ktrace-filter-descriptor") == 0) {
-        free(state->filter);
-        state->filter = strdup(argv[1]);
+        if (strncmp(argv[1], "add:", 4) == 0 || strncmp(argv[1], "remove:", 7) == 0) {
+            if (update_list(&state->filter, argv[1]) != 0) return 64;
+        } else {
+            free(state->filter);
+            state->filter = strdup(argv[1]);
+        }
     } else if (strcmp(argv[0], "sampling-option") == 0) {
-        free(state->sampling);
-        state->sampling = strdup(argv[1]);
+        if (strncmp(argv[1], "add:", 4) == 0 || strncmp(argv[1], "remove:", 7) == 0) {
+            if (update_list(&state->sampling, argv[1]) != 0) return 64;
+        } else {
+            free(state->sampling);
+            state->sampling = strdup(argv[1]);
+        }
     } else {
         fprintf(stderr, "tailspin: unknown setting: %s\n", argv[0]);
         return 64;

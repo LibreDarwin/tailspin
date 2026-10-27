@@ -44,6 +44,8 @@ test: all
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) enable
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set buffer-size 64
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) info >/dev/null
+	@config=$$(mktemp -d); ! TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set oncore-sampling-period 999999
+	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set sampling-option add:test-option; TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) set sampling-option remove:test-option
 
 install: all
 	install -d $(DESTDIR)/usr/bin $(DESTDIR)/usr/libexec
