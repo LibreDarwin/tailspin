@@ -87,6 +87,43 @@ that they accept a session as their first argument, but callback, file, and
 configuration object types require the unavailable private headers. They are
 intentionally not declared by this project yet.
 
+tailspind/libtailspin boundary
+------------------------------
+
+The installed `/usr/libexec/tailspind` imports these additional symbols from
+`libtailspin.dylib`:
+
+    id tailspin_make_ondisk_config(const char *path, bool create);
+    void tailspin_config_free(void *config);
+
+The first call is made with `/var/db/tailspin_config.plist` and either zero or
+one as its second argument. Its result is retained as an Objective-C object,
+so the concrete config type is an Objective-C/CF object rather than a plain C
+struct. The free routine is called with that object after use.
+
+The default getters are called without arguments and return their values in
+the normal scalar/pointer return register:
+
+    bool tailspin_enabled_get_default(void);
+    uint64_t tailspin_buffer_size_get_default(void);
+    const char *tailspin_kdbg_filter_get_default(void);
+    uint64_t tailspin_full_sampling_period_get_default(void);
+    uint64_t tailspin_oncore_sampling_period_get_default(void);
+    const char *tailspin_sampling_options_get_default(void);
+    bool tailspin_cputrace_enabled_get_default(void);
+
+These names are private implementation symbols, not a supported public API.
+The `TSPDumpOptions_*` imports are data accessors or exported option objects;
+their exact storage type is not inferred from the daemon call sites and should
+not be represented as C functions.
+
+`tailspin_save_trace_with_standard_chunks` is called with at least nine
+arguments: six register arguments followed by three stack arguments. The
+daemon passes a file descriptor, timestamps, an options/config object, a
+completion block, and processing state, but the call site alone does not
+establish stable source-level types for all positions. Its ABI should be
+wrapped only after matching the same call convention on the target OS.
+
 ABI cautions
 ------------
 
