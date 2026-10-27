@@ -4,10 +4,49 @@
 #include <dispatch/dispatch.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <xpc/xpc.h>
 
 #include "../common/tailspin_capture.h"
+#include "../common/tailspin_state.h"
+
+static int apply_config(xpc_object_t object) {
+    tailspin_state_t state;
+    xpc_object_t config = xpc_dictionary_get_value(object, "tailspin_config");
+    if (config == NULL)
+        config = object;
+    if (xpc_get_type(config) != XPC_TYPE_DICTIONARY)
+        return EINVAL;
+    tailspin_state_init(&state);
+    if (tailspin_state_load(&state) != 0) {
+        tailspin_state_free(&state);
+        return EIO;
+    }
+    if (xpc_dictionary_get_value(config, "enabled") != NULL)
+        state.enabled = xpc_dictionary_get_bool(config, "enabled");
+    if (xpc_dictionary_get_value(config, "buffer-size-mb") != NULL)
+        state.buffer_size_mb = xpc_dictionary_get_uint64(config, "buffer-size-mb");
+    if (xpc_dictionary_get_value(config, "oncore-sampling-period") != NULL)
+        state.oncore_period_ns = xpc_dictionary_get_uint64(config, "oncore-sampling-period");
+    if (xpc_dictionary_get_value(config, "full-system-sampling-period") != NULL)
+        state.full_period_ns = xpc_dictionary_get_uint64(config, "full-system-sampling-period");
+    if (xpc_dictionary_get_value(config, "cputrace") != NULL)
+        state.cputrace = xpc_dictionary_get_bool(config, "cputrace");
+    const char *filter = xpc_dictionary_get_string(config, "ktrace-filter-descriptor");
+    if (filter != NULL) {
+        free(state.filter);
+        state.filter = strdup(filter);
+    }
+    const char *sampling = xpc_dictionary_get_string(config, "sampling-option");
+    if (sampling != NULL) {
+        free(state.sampling);
+        state.sampling = strdup(sampling);
+    }
+    int result = tailspin_state_save(&state) == 0 ? 0 : EIO;
+    tailspin_state_free(&state);
+    return result;
+}
 
 static void handle_message(xpc_object_t object) {
     xpc_object_t reply;
@@ -44,7 +83,7 @@ static void handle_message(xpc_object_t object) {
                 result = EBADF;
             }
         } else if (strcmp(command, "TAILSPIN_APPLY_CONFIG") == 0 || request_type == 2) {
-            result = ENOTSUP;
+            result = apply_config(object);
         } else if (strcmp(command, "TAILSPIN_GET_CPUTRACE_SESSION") == 0 || request_type == 3) {
             result = ENOTSUP;
         }
