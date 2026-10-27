@@ -24,6 +24,13 @@ static void replace_string(char **slot, const char *value) {
     *slot = copy_string(value);
 }
 
+static int valid_state(const tailspin_state_t *state) {
+    return state->buffer_size_mb != 0 &&
+           (state->oncore_period_ns == 0 || state->oncore_period_ns >= 1000000) &&
+           (state->full_period_ns == 0 || state->full_period_ns >= 10000000) &&
+           (state->cputrace == 0 || state->cputrace == 1);
+}
+
 const char *tailspin_state_path(void) {
     const char *path = getenv("TAILSPIN_CONFIG_PATH");
     return path != NULL && path[0] != '\0' ? path : "/var/db/tailspin/config";
@@ -59,8 +66,14 @@ static int parse_line(tailspin_state_t *state, char *line) {
         state->oncore_period_ns = strtoull(value, NULL, 10);
     else if (strcmp(line, "full-system-sampling-period") == 0)
         state->full_period_ns = strtoull(value, NULL, 10);
-    else if (strcmp(line, "cputrace") == 0)
-        state->cputrace = atoi(value) != 0;
+    else if (strcmp(line, "cputrace") == 0) {
+        if (strcmp(value, "0") == 0)
+            state->cputrace = 0;
+        else if (strcmp(value, "1") == 0)
+            state->cputrace = 1;
+        else
+            return -1;
+    }
     else if (strcmp(line, "ktrace-filter-descriptor") == 0)
         replace_string(&state->filter, value);
     else if (strcmp(line, "sampling-option") == 0)
@@ -75,9 +88,17 @@ int tailspin_state_load(tailspin_state_t *state) {
         return errno == ENOENT ? 0 : -1;
     while (fgets(line, sizeof(line), file) != NULL) {
         line[strcspn(line, "\n")] = '\0';
-        parse_line(state, line);
+        if (parse_line(state, line) != 0) {
+            fclose(file);
+            errno = EINVAL;
+            return -1;
+        }
     }
     fclose(file);
+    if (!valid_state(state)) {
+        errno = EINVAL;
+        return -1;
+    }
     return 0;
 }
 
