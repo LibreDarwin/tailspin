@@ -56,6 +56,8 @@ install: all
 	install -d $(DESTDIR)/usr/share/man/man1 $(DESTDIR)/usr/share/man/man8
 	install -m 0444 man/tailspin.1 $(DESTDIR)/usr/share/man/man1/tailspin.1
 	install -m 0444 man/tailspind.8 $(DESTDIR)/usr/share/man/man8/tailspind.8
+	install -d $(DESTDIR)/AppleInternal/tailspin
+	install -m 0444 tailspin-README.txt $(DESTDIR)/AppleInternal/tailspin/tailspin-README.txt
 
 clean:
 	rm -rf build
