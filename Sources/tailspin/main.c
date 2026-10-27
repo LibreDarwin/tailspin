@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <mach/mach_time.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -191,6 +192,8 @@ static int command_save(int argc, char **argv) {
         uint64_t now = mach_absolute_time();
         mach_timebase_info(&timebase);
         long double ticks_per_second = 1000000000.0L * timebase.denom / timebase.numer;
+        if ((long double)last_seconds * ticks_per_second > 18446744073709551615.0L)
+            return 64;
         uint64_t duration = (uint64_t)(last_seconds * ticks_per_second);
         delta_timestamp = now > duration ? now - duration : 0;
     }
