@@ -1,0 +1,108 @@
+Copyright (C) 2026, LibreDarwin
+SPDX-License-Identifier: BSD-3-Clause
+
+Reconstructed ktrace ABI
+========================
+
+This is a clean-room ABI note for the private `ktrace` framework used by the
+system `/usr/bin/ktrace` client. It is based on exported symbols in the
+Command Line Tools `libktrace.tbd` and AArch64 call sites in `/usr/bin/ktrace`.
+No private header or implementation source was available in the local SDK.
+
+Opaque types
+------------
+
+The call sites treat both values as opaque pointers:
+
+    typedef struct ktrace_session *ktrace_session_t;
+    typedef struct ktrace_recording *ktrace_recording_t;
+
+Confirmed function signatures
+-----------------------------
+
+    ktrace_session_t ktrace_session_create(void);
+    void ktrace_session_destroy(ktrace_session_t session);
+    int ktrace_start(ktrace_session_t session);
+    int ktrace_end(ktrace_session_t session, int flush);
+
+`ktrace_session_create` is called with no argument and its return value is
+tested for null. `ktrace_start` and `ktrace_end` return an integer error code.
+The second `ktrace_end` argument is loaded as either zero or one at all
+observed call sites and is therefore represented as an integer rather than a
+ guessed C++ or enum type.
+
+Output functions
+----------------
+
+    int ktrace_start_writing_path(ktrace_session_t session,
+                                  const char *path,
+                                  mode_t mode);
+
+The `ktrace` trace command loads the session into `x0`, the output path into
+`x1`, and the literal `0120644` into `w2` before calling this symbol. The
+return value is checked as a POSIX-style error code.
+
+The raw-output command supplies the following five arguments:
+
+    int ktrace_start_writing_fd(ktrace_session_t session,
+                                int close_fd,
+                                int fd,
+                                uint64_t flags,
+                                uint64_t options);
+
+    int ktrace_start_writing_file(ktrace_session_t session,
+                                  FILE *file,
+                                  int fd_or_mode,
+                                  uint64_t flags,
+                                  uint64_t options);
+
+The first call site loads `x1 = 1`, `x2 = fd`, and zeroes `x3`/`x4`. The second
+loads `x1 = FILE *`, `x2` from the same local value used for the FD form, and
+also zeroes `x3`/`x4`. The exact semantic names of the final arguments are not
+established; they must remain opaque until private headers or additional
+callers are available.
+
+Recording helpers
+-----------------
+
+    ktrace_recording_t ktrace_recording_create(const char *name,
+                                               int flags);
+    void ktrace_recording_set_streams(ktrace_recording_t recording,
+                                      FILE *stdout_stream,
+                                      FILE *stderr_stream);
+
+The system client passes the string `"ktrace record"` and `1` to the
+constructor, then passes the returned object and its stdout/stderr streams to
+`ktrace_recording_set_streams`. The constructor result is stored as an opaque
+pointer. The stream setter's return value is not consumed at that call site,
+so its return type is not asserted here; `void` is the safest source-level
+declaration for callers that do not need diagnostics.
+
+Additional observed symbols
+---------------------------
+
+The client imports `ktrace_configure`, `ktrace_set_command_argv`,
+`ktrace_set_completion_handler`, and `ktrace_set_file`. Their call sites show
+that they accept a session as their first argument, but callback, file, and
+configuration object types require the unavailable private headers. They are
+intentionally not declared by this project yet.
+
+ABI cautions
+------------
+
+* Do not define the internal session or recording layout. The client accesses
+  fields only in its own wrapper objects, not in the framework objects.
+* The framework is a private system framework and is not present as a normal
+  SDK framework for portable linking.
+* `ktrace_start_writing_path` uses a `mode_t` mode argument on the observed
+  AArch64 path; this is stronger evidence than treating the third argument as
+  an arbitrary flags word.
+* Before adding a runtime loader, validate every function pointer and preserve
+  the framework's integer error returns. Never call an inferred symbol through
+  a guessed callback or struct layout.
+
+Evidence commands
+-----------------
+
+    otool -arch arm64 -Iv /usr/bin/ktrace
+    otool -arch arm64 -tvV /usr/bin/ktrace
