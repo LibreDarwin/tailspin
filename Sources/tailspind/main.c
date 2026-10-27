@@ -58,21 +58,26 @@ static int apply_config(xpc_object_t object) {
 static void handle_message(xpc_object_t object) {
     xpc_object_t reply;
     const char *command = NULL;
-    int64_t request_type;
+    uint64_t request_type;
     int64_t dump_fd;
     uint64_t request_timestamp;
     uint64_t request_id;
+    int has_request_type;
     int result = ENOTSUP;
     if (xpc_get_type(object) != XPC_TYPE_DICTIONARY)
         return;
-    request_type = xpc_dictionary_get_int64(object, "tailspin_request_type");
+    has_request_type = xpc_dictionary_get_value(object, "tailspin_request_type") != NULL;
+    request_type = xpc_dictionary_get_uint64(object, "tailspin_request_type");
     command = xpc_dictionary_get_string(object, "tailspin_request_type");
-    if (command == NULL)
+    if (command == NULL && has_request_type)
         command = xpc_dictionary_get_string(object, "command");
-    if (command == NULL && request_type > 0)
-        command = request_type == 1 ? "TAILSPIN_DUMP_OUTPUT" :
-                  request_type == 2 ? "TAILSPIN_APPLY_CONFIG" :
-                  request_type == 3 ? "TAILSPIN_GET_CPUTRACE_SESSION" : "UNKNOWN";
+    if (command == NULL)
+        command = request_type == 0 || request_type == UINT64_C(0xdeadcb00) ?
+                      "TAILSPIN_APPLY_CONFIG" :
+                  request_type == 1 ? "TAILSPIN_DUMP_OUTPUT" :
+                  request_type == UINT64_C(0xdeadcb01) ?
+                      "TAILSPIN_GET_CPUTRACE_SESSION" :
+                  request_type == UINT64_C(0xdeadcaff) ? "TAILSPIN_POKE" : "UNKNOWN";
     reply = xpc_dictionary_create_reply(object);
     if (reply == NULL)
         return;
@@ -80,7 +85,8 @@ static void handle_message(xpc_object_t object) {
         xpc_dictionary_set_int64(reply, "error", 22);
         xpc_dictionary_set_string(reply, "error-description", "missing command");
     } else {
-        if (strcmp(command, "TAILSPIN_DUMP_OUTPUT") == 0 || request_type == 1) {
+        if (strcmp(command, "TAILSPIN_DUMP_OUTPUT") == 0 ||
+            (has_request_type && request_type == 1)) {
             dump_fd = xpc_dictionary_get_int64(object, "tailspin_dump_fd");
             request_timestamp = xpc_dictionary_get_uint64(object, "tailspin_dump_request_timestamp");
             request_id = xpc_dictionary_get_uint64(object, "request_id");
@@ -95,10 +101,16 @@ static void handle_message(xpc_object_t object) {
             } else {
                 result = EBADF;
             }
-        } else if (strcmp(command, "TAILSPIN_APPLY_CONFIG") == 0 || request_type == 2) {
+        } else if (strcmp(command, "TAILSPIN_APPLY_CONFIG") == 0 ||
+                   (has_request_type &&
+                    (request_type == 0 || request_type == UINT64_C(0xdeadcb00)))) {
             result = apply_config(object);
-        } else if (strcmp(command, "TAILSPIN_GET_CPUTRACE_SESSION") == 0 || request_type == 3) {
+        } else if (strcmp(command, "TAILSPIN_GET_CPUTRACE_SESSION") == 0 ||
+                   (has_request_type && request_type == UINT64_C(0xdeadcb01))) {
             result = ENOTSUP;
+        } else if (strcmp(command, "TAILSPIN_POKE") == 0 ||
+                   (has_request_type && request_type == UINT64_C(0xdeadcaff))) {
+            result = 0;
         }
         xpc_dictionary_set_int64(reply, "error", result);
         xpc_dictionary_set_bool(reply, "tailspin_succeeded", result == 0);

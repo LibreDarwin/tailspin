@@ -138,6 +138,26 @@ ABI cautions
   the framework's integer error returns. Never call an inferred symbol through
   a guessed callback or struct layout.
 
+tailspind request values
+------------------------
+
+Disassembly of `/usr/libexec/tailspind` resolves the numeric values stored in
+`tailspin_request_type`:
+
+    0x00000000       TAILSPIN_APPLY_CONFIG
+    0x00000001       TAILSPIN_DUMP_OUTPUT
+    0xdeadcaff       TAILSPIN_POKE
+    0xdeadcb00       TAILSPIN_APPLY_CONFIG (legacy/private form)
+    0xdeadcb01       TAILSPIN_GET_CPUTRACE_SESSION
+
+The daemon first handles the ordinary values `0` and `1`, then compares the
+low 32 bits against the `0xdead....` values. This is why the values appear as
+negative signed integers in the optimized AArch64 comparison sequence. The
+request dictionary also uses `tailspin_config` as an XPC data object for the
+native apply-config path; the observed data length is `0x2118` bytes. A
+dictionary-shaped configuration is a compatibility convenience in this
+reimplementation, not the native Apple wire representation.
+
 Evidence commands
 -----------------
 
