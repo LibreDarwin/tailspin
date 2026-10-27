@@ -142,10 +142,28 @@ static int command_save(int argc, char **argv) {
     int option;
     const char *reason = NULL;
     const char *path = NULL;
-    while ((option = getopt(argc, argv, "r:l:n")) != -1) {
+    int target_pid = -1;
+    int cputrace = 0;
+    static const struct option options[] = {
+        {"reason", required_argument, NULL, 'r'},
+        {"for-last-seconds", required_argument, NULL, 'l'},
+        {"no-symbolicate", no_argument, NULL, 'n'},
+        {"dsymForUUID", no_argument, NULL, 'd'},
+        {"gather-os-signposts", no_argument, NULL, 's'},
+        {"gather-os-logs", no_argument, NULL, 'o'},
+        {"scrub-output", no_argument, NULL, 'S'},
+        {"pid", required_argument, NULL, 'p'},
+        {"cputrace", no_argument, NULL, 'C'},
+        {NULL, 0, NULL, 0}
+    };
+    optind = 1;
+    while ((option = getopt_long(argc, argv, "r:l:ndosSp:c:C", options, NULL)) != -1) {
         if (option == 'r') reason = optarg;
         else if (option == 'l') (void)strtoull(optarg, NULL, 10);
-        else if (option == 'n') continue;
+        else if (option == 'p') target_pid = atoi(optarg);
+        else if (option == 'C') cputrace = 1;
+        else if (option == 'n' || option == 'd' || option == 'o' || option == 's' ||
+                 option == 'S' || option == 'c') continue;
         else return 64;
     }
     if (optind < argc) path = argv[optind];
@@ -154,12 +172,13 @@ static int command_save(int argc, char **argv) {
         return 64;
     }
     uint64_t size = 0;
-    int result = tailspin_capture_stackshot(path, -1, 0, &size);
+    int result = tailspin_capture_stackshot(path, target_pid, 0, &size);
     if (result != 0) {
         fprintf(stderr, "tailspin: unable to save %s: %s\n", path, strerror(result));
         return 1;
     }
     (void)reason;
+    (void)cputrace;
     return size == 0 ? 1 : 0;
 }
 
