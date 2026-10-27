@@ -53,6 +53,8 @@ install: all
 	install -d $(DESTDIR)/usr/bin $(DESTDIR)/usr/libexec
 	install -m 0755 $(TAILSPIN) $(DESTDIR)/usr/bin/tailspin
 	install -m 0755 $(TAILSPIND) $(DESTDIR)/usr/libexec/tailspind
+	install -d $(DESTDIR)/Library/LaunchDaemons
+	install -m 0444 com.apple.tailspind.plist $(DESTDIR)/Library/LaunchDaemons/com.apple.tailspind.plist
 	install -d $(DESTDIR)/usr/share/man/man1 $(DESTDIR)/usr/share/man/man8
 	install -m 0444 man/tailspin.1 $(DESTDIR)/usr/share/man/man1/tailspin.1
 	install -m 0444 man/tailspind.8 $(DESTDIR)/usr/share/man/man8/tailspind.8
