@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <getopt.h>
+#include <mach/mach_time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -144,6 +145,7 @@ static int command_save(int argc, char **argv) {
     const char *path = NULL;
     int target_pid = -1;
     int cputrace = 0;
+    unsigned long long last_seconds = 0;
     static const struct option options[] = {
         {"reason", required_argument, NULL, 'r'},
         {"for-last-seconds", required_argument, NULL, 'l'},
@@ -159,7 +161,13 @@ static int command_save(int argc, char **argv) {
     optind = 1;
     while ((option = getopt_long(argc, argv, "r:l:ndosSp:c:C", options, NULL)) != -1) {
         if (option == 'r') reason = optarg;
-        else if (option == 'l') (void)strtoull(optarg, NULL, 10);
+        else if (option == 'l') {
+            char *end;
+            errno = 0;
+            last_seconds = strtoull(optarg, &end, 10);
+            if (errno != 0 || end == optarg || *end != '\0')
+                return 64;
+        }
         else if (option == 'p') target_pid = atoi(optarg);
         else if (option == 'C') cputrace = 1;
         else if (option == 'n' || option == 'd' || option == 'o' || option == 's' ||
@@ -172,7 +180,16 @@ static int command_save(int argc, char **argv) {
         return 64;
     }
     uint64_t size = 0;
-    int result = tailspin_capture_stackshot(path, target_pid, 0, &size);
+    uint64_t delta_timestamp = 0;
+    if (last_seconds != 0) {
+        mach_timebase_info_data_t timebase = {0, 0};
+        uint64_t now = mach_absolute_time();
+        mach_timebase_info(&timebase);
+        long double ticks_per_second = 1000000000.0L * timebase.denom / timebase.numer;
+        uint64_t duration = (uint64_t)(last_seconds * ticks_per_second);
+        delta_timestamp = now > duration ? now - duration : 0;
+    }
+    int result = tailspin_capture_stackshot(path, target_pid, delta_timestamp, &size);
     if (result != 0) {
         fprintf(stderr, "tailspin: unable to save %s: %s\n", path, strerror(result));
         return 1;
