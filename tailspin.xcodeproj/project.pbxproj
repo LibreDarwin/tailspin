@@ -1,0 +1,33 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+		A00000000000000000000001 = {isa = PBXBuildFile; fileRef = A00000000000000000000011; };
+		A00000000000000000000002 = {isa = PBXBuildFile; fileRef = A00000000000000000000012; };
+		A00000000000000000000003 = {isa = PBXBuildFile; fileRef = A00000000000000000000013; };
+		A00000000000000000000004 = {isa = PBXBuildFile; fileRef = A00000000000000000000014; };
+		A00000000000000000000011 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tailspin/main.c; sourceTree = "<group>"; };
+		A00000000000000000000012 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = common/tailspin_state.c; sourceTree = "<group>"; };
+		A00000000000000000000013 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common/tailspin_state.h; sourceTree = "<group>"; };
+		A00000000000000000000014 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tailspind/main.c; sourceTree = "<group>"; };
+		A00000000000000000000021 = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = tailspin; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000022 = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = tailspind; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000031 = {isa = PBXGroup; children = (A00000000000000000000011, A00000000000000000000012, A00000000000000000000013, A00000000000000000000014); path = Sources; sourceTree = "<group>"; };
+		A00000000000000000000032 = {isa = PBXGroup; children = (A00000000000000000000021, A00000000000000000000022); name = Products; sourceTree = "<group>"; };
+		A00000000000000000000033 = {isa = PBXGroup; children = (A00000000000000000000031, A00000000000000000000032); sourceTree = "<group>"; };
+		A00000000000000000000041 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000001, A00000000000000000000002, A00000000000000000000003); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000042 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000004); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000051 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = tailspin; SDKROOT = macosx; HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/common"; }; name = Release; };
+		A00000000000000000000052 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = tailspind; SDKROOT = macosx; }; name = Release; };
+		A00000000000000000000061 = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000051); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000062 = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000052); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000071 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000061; buildPhases = (A00000000000000000000041); name = tailspin; productName = tailspin; productReference = A00000000000000000000021; productType = "com.apple.product-type.tool"; };
+		A00000000000000000000072 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000062; buildPhases = (A00000000000000000000042); name = tailspind; productName = tailspind; productReference = A00000000000000000000022; productType = "com.apple.product-type.tool"; };
+		A00000000000000000000081 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = macosx; }; name = Release; };
+		A00000000000000000000082 = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000081); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000091 = {isa = PBXProject; buildConfigurationList = A00000000000000000000082; compatibilityVersion = "Xcode 14.0"; mainGroup = A00000000000000000000033; productRefGroup = A00000000000000000000032; projectDirPath = ""; projectRoot = ""; targets = (A00000000000000000000071, A00000000000000000000072); };
+	};
+	rootObject = A00000000000000000000091;
+}

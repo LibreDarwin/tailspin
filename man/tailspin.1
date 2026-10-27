@@ -1,0 +1,46 @@
+." Copyright (C) 2026, LibreDarwin
+." SPDX-License-Identifier: BSD-3-Clause
+.Dd October 27, 2026
+.Dt TAILSPIN 1
+.Os Darwin
+.Sh NAME
+.Nm tailspin
+.Nd configure, save and print tailspin output
+.Sh SYNOPSIS
+.Nm
+.Op Cm info | enable | disable
+.Nm
+.Cm set Ar setting value
+.Nm
+.Cm reset Op Ar setting
+.Nm
+.Cm save Op Fl r Ar reason Op Fl l Ar seconds Op Fl n Ar path
+.Nm
+.Cm augment | stat Ar path
+.Sh DESCRIPTION
+.Nm
+provides the command-line interface to the tailspin tracing service. Configuration
+is persistent and may be redirected for testing with the
+environment variable.
+.Sh SETTINGS
+.Bl -tag -width indent
+.It Cm buffer-size
+Kernel trace buffer size in megabytes.
+.It Cm ktrace-filter-descriptor
+Kdebug filter description, including
+.Ql ALL
+and class/subclass selectors.
+.It Cm oncore-sampling-period
+On-core sampling period in nanoseconds, or
+.Ql disabled .
+.It Cm full-system-sampling-period
+Full-system sampling period in nanoseconds, or
+.Ql disabled .
+.It Cm sampling-option
+Comma-separated sampling options.
+.It Cm cputrace
+Enable or disable CPU trace collection with
+.Ql 1
+or
+.Ql 0 .
+.El
