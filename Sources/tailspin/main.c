@@ -234,9 +234,9 @@ static int command_augment(int argc, char **argv) {
         return 64;
     for (; optind < argc; optind++) {
         struct stat file_stat;
-        if (stat(argv[optind], &file_stat) != 0) {
+        if (stat(argv[optind], &file_stat) != 0 || !S_ISREG(file_stat.st_mode)) {
             fprintf(stderr, "tailspin: unable to open %s for augmenting: %s\n",
-                    argv[optind], strerror(errno));
+                    argv[optind], errno == 0 ? "not a regular file" : strerror(errno));
             return 1;
         }
     }
