@@ -395,6 +395,16 @@ next_chunk:
         if (trace_file != NULL)
             ktrace_file_close(trace_file);
     }
+    if (verbose) {
+        ktrace_file_t trace_file = ktrace_file_open(path, 0);
+        int64_t event_count = trace_file == NULL ? -1 :
+            ktrace_file_ktrace_event_count(trace_file);
+        if (trace_file != NULL)
+            ktrace_file_close(trace_file);
+        if (event_count >= 0)
+            printf("Total tailspin buffer size : %.2f MB\n",
+                   (double)event_count * 64.0 / (1024.0 * 1024.0));
+    }
     return 0;
 }
 
