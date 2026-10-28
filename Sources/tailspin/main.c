@@ -235,13 +235,45 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
     uint32_t version = read_u32(buffer + 4);
     uint64_t header_length = read_u64(buffer + 8);
     size_t offset;
+    size_t header_offset;
+    size_t header_end;
     size_t chunk_count = 0;
+    size_t header_chunk_count = 0;
     size_t i;
     uint64_t metadata_size = 0;
+    struct type_count header_chunks[32];
     (void)sort_by_frequency;
     if (header_length > length - 16 || header_length > SIZE_MAX - 16) {
         fprintf(stderr, "tailspin: malformed tailspin header in %s\n", path);
         return 1;
+    }
+    header_offset = 16;
+    header_end = 16 + (size_t)header_length;
+    while (header_offset + 24 <= header_end) {
+        uint32_t tag;
+        uint64_t payload_length;
+        size_t index;
+        tag = read_u32(buffer + header_offset + 8);
+        payload_length = read_u64(buffer + header_offset + 16);
+        if ((tag != 0x8c00 && tag != 0x8c01 && tag != 0x1c00) ||
+            payload_length > header_end - header_offset - 24) {
+            header_offset += 8;
+            continue;
+        }
+        for (index = 0; index < header_chunk_count; index++)
+            if (header_chunks[index].tag == tag)
+                break;
+        if (index == header_chunk_count && header_chunk_count < 32) {
+            header_chunks[index].tag = tag;
+            header_chunks[index].size = 0;
+            header_chunks[index].count = 0;
+            header_chunk_count++;
+        }
+        if (index < header_chunk_count) {
+            header_chunks[index].size += payload_length;
+            header_chunks[index].count++;
+        }
+        header_offset += 8;
     }
     offset = 16 + (size_t)header_length;
     while (offset < length) {
@@ -285,6 +317,13 @@ next_chunk:
     if (verbose)
         printf("Header magic: 0x%08x\nHeader version: %u\nHeader bytes: %llu\n",
                read_u32(buffer), version, (unsigned long long)header_length);
+    if (verbose) {
+        printf("Header chunks:\n");
+        for (i = 0; i < header_chunk_count; i++)
+            printf("0x%08x %zu chunks %llu bytes\n", header_chunks[i].tag,
+                   header_chunks[i].count,
+                   (unsigned long long)header_chunks[i].size);
+    }
     printf("Regular chunks: %zu\n", chunk_count);
     for (i = 0; i < chunk_count; i++)
         printf("0x%08x %zu chunks %llu bytes\n", chunks[i].tag, chunks[i].count,
