@@ -3,6 +3,7 @@
 
 #include "../common/tailspin_state.h"
 #include "../common/tailspin_capture.h"
+#include "ktrace.h"
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <errno.h>
@@ -243,6 +244,8 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
     size_t i;
     uint64_t metadata_size = 0;
     size_t metadata_offset = 0;
+    uint64_t *event_frequencies = NULL;
+    __block uint64_t event_total = 0;
     struct type_count header_chunks[32];
     (void)sort_by_frequency;
     if (header_length > length - 16 || header_length > SIZE_MAX - 16) {
@@ -346,6 +349,33 @@ next_chunk:
             CFRelease(metadata);
         if (data != NULL)
             CFRelease(data);
+    }
+    if (sort_by_frequency) {
+        ktrace_file_t trace_file = ktrace_file_open(path, 0);
+        if (trace_file != NULL) {
+            event_frequencies = calloc(256 * 256, sizeof(*event_frequencies));
+            if (event_frequencies != NULL &&
+                ktrace_file_iterate_ktrace_events(trace_file, ^int(uint32_t debugid) {
+                    event_frequencies[((debugid >> 24) & 0xff) * 256 +
+                                      ((debugid >> 16) & 0xff)]++;
+                    event_total++;
+                    return 1;
+                }) == 0) {
+                printf("Frequencies:\n");
+                for (i = 0; i < 256 * 256; i++) {
+                    if (event_frequencies[i] != 0) {
+                        double percentage = event_total == 0 ? 0.0 :
+                            100.0 * event_frequencies[i] / event_total;
+                        printf("C0x%02x,S0x%02x: %llu events (%5.2f%%)\n",
+                               (unsigned)(i / 256), (unsigned)(i % 256),
+                               (unsigned long long)event_frequencies[i],
+                               percentage);
+                    }
+                }
+            }
+            free(event_frequencies);
+            ktrace_file_close(trace_file);
+        }
     }
     return 0;
 }
