@@ -254,10 +254,6 @@ static int command_augment(int argc, char **argv) {
             return 1;
         }
     }
-    if (with_os_logs && other_augmentation) {
-        fprintf(stderr, "tailspin: log augmentation cannot be combined with other augmentation options\n");
-        return 64;
-    }
     if (with_os_logs) {
         for (; optind < argc; optind++) {
             int fd = open(argv[optind], O_RDWR);
