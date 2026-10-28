@@ -336,22 +336,6 @@ next_chunk:
                (unsigned long long)chunks[i].size);
     if (metadata_size != 0)
         printf("metadata chunk: %llu bytes\n", (unsigned long long)metadata_size);
-    if (metadata_size != 0 && metadata_offset <= length &&
-        metadata_size <= length - metadata_offset) {
-        CFDataRef data = CFDataCreate(kCFAllocatorDefault,
-                                      buffer + metadata_offset,
-                                      (CFIndex)metadata_size);
-        CFPropertyListRef metadata = CFPropertyListCreateWithData(
-            kCFAllocatorDefault, data, kCFPropertyListImmutable, NULL, NULL);
-        if (metadata != NULL) {
-            printf("tailspin metadata:\n");
-            CFShow(metadata);
-        }
-        if (metadata != NULL)
-            CFRelease(metadata);
-        if (data != NULL)
-            CFRelease(data);
-    }
     if (sort_by_frequency) {
         ktrace_file_t trace_file = ktrace_file_open(path, 0);
         if (trace_file != NULL) {
@@ -406,6 +390,22 @@ next_chunk:
         if (event_count >= 0)
             printf("Total tailspin buffer size : %.2f MB\n",
                    (double)event_count * 64.0 / (1024.0 * 1024.0));
+    }
+    if (metadata_size != 0 && metadata_offset <= length &&
+        metadata_size <= length - metadata_offset) {
+        CFDataRef data = CFDataCreate(kCFAllocatorDefault,
+                                      buffer + metadata_offset,
+                                      (CFIndex)metadata_size);
+        CFPropertyListRef metadata = CFPropertyListCreateWithData(
+            kCFAllocatorDefault, data, kCFPropertyListImmutable, NULL, NULL);
+        if (metadata != NULL) {
+            printf("tailspin metadata:\n");
+            CFShow(metadata);
+        }
+        if (metadata != NULL)
+            CFRelease(metadata);
+        if (data != NULL)
+            CFRelease(data);
     }
     return 0;
 }
