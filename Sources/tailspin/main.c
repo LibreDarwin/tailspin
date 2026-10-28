@@ -232,6 +232,14 @@ static int command_augment(int argc, char **argv) {
     }
     if (!requested || optind >= argc)
         return 64;
+    for (; optind < argc; optind++) {
+        struct stat file_stat;
+        if (stat(argv[optind], &file_stat) != 0) {
+            fprintf(stderr, "tailspin: unable to open %s for augmenting: %s\n",
+                    argv[optind], strerror(errno));
+            return 1;
+        }
+    }
     return 0;
 }
 
