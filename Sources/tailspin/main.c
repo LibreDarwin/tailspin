@@ -207,6 +207,85 @@ static int command_save(int argc, char **argv) {
     return size == 0 ? 1 : 0;
 }
 
+struct tailspin_chunk_header {
+    uint32_t tag;
+    uint32_t version;
+    uint64_t payload_length;
+};
+
+static uint32_t read_u32(const unsigned char *bytes) {
+    uint32_t value;
+    memcpy(&value, bytes, sizeof(value));
+    return value;
+}
+
+static uint64_t read_u64(const unsigned char *bytes) {
+    uint64_t value;
+    memcpy(&value, bytes, sizeof(value));
+    return value;
+}
+
+static int command_stat_tailspin(const char *path, const unsigned char *buffer,
+                                 size_t length, int verbose, int sort_by_frequency) {
+    struct type_count {
+        uint32_t tag;
+        uint64_t size;
+        size_t count;
+    } chunks[128];
+    uint32_t version = read_u32(buffer + 4);
+    uint64_t header_length = read_u64(buffer + 8);
+    size_t offset;
+    size_t chunk_count = 0;
+    size_t i;
+    (void)sort_by_frequency;
+    if (header_length > length - 16 || header_length > SIZE_MAX - 16) {
+        fprintf(stderr, "tailspin: malformed tailspin header in %s\n", path);
+        return 1;
+    }
+    offset = 16 + (size_t)header_length;
+    while (offset < length) {
+        uint32_t tag;
+        uint64_t payload_length;
+        size_t index;
+        if (length - offset < sizeof(struct tailspin_chunk_header)) {
+            fprintf(stderr, "tailspin: truncated tailspin chunk in %s\n", path);
+            return 1;
+        }
+        tag = read_u32(buffer + offset);
+        payload_length = read_u64(buffer + offset + 8);
+        if (payload_length > length - offset - sizeof(struct tailspin_chunk_header)) {
+            fprintf(stderr, "tailspin: malformed tailspin chunk in %s\n", path);
+            return 1;
+        }
+        for (index = 0; index < chunk_count; index++)
+            if (chunks[index].tag == tag)
+                break;
+        if (index == chunk_count && chunk_count < sizeof(chunks) / sizeof(chunks[0])) {
+            chunks[index].tag = tag;
+            chunks[index].size = 0;
+            chunks[index].count = 0;
+            chunk_count++;
+        }
+        if (index < chunk_count) {
+            chunks[index].size += payload_length;
+            chunks[index].count++;
+        }
+        offset += sizeof(struct tailspin_chunk_header) + (size_t)payload_length;
+        if (offset > SIZE_MAX - 7)
+            return 1;
+        offset = (offset + 7) & ~(size_t)7;
+    }
+    printf("File: %s\nSize: %zu bytes\nFormat: Apple tailspin\n", path, length);
+    if (verbose)
+        printf("Header magic: 0x%08x\nHeader version: %u\nHeader bytes: %llu\n",
+               read_u32(buffer), version, (unsigned long long)header_length);
+    printf("Regular chunks: %zu\n", chunk_count);
+    for (i = 0; i < chunk_count; i++)
+        printf("0x%08x %zu chunks %llu bytes\n", chunks[i].tag, chunks[i].count,
+               (unsigned long long)chunks[i].size);
+    return 0;
+}
+
 static int command_stat(int argc, char **argv) {
     struct kcdata_item_header {
         unsigned int type;
@@ -250,6 +329,12 @@ static int command_stat(int argc, char **argv) {
     }
     fclose(file);
     marker = *(unsigned int *)buffer;
+    if (marker == 0x55aa0300U) {
+        int result = command_stat_tailspin(path, buffer, (size_t)file_stat.st_size,
+                                           verbose, sort_by_frequency);
+        free(buffer);
+        return result;
+    }
     while (offset + sizeof(struct kcdata_item_header) <= (size_t)file_stat.st_size) {
         struct kcdata_item_header *item = (struct kcdata_item_header *)(buffer + offset);
         size_t item_size = sizeof(*item) + item->size;
