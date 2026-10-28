@@ -343,8 +343,10 @@ next_chunk:
                                       (CFIndex)metadata_size);
         CFPropertyListRef metadata = CFPropertyListCreateWithData(
             kCFAllocatorDefault, data, kCFPropertyListImmutable, NULL, NULL);
-        if (metadata != NULL)
+        if (metadata != NULL) {
+            printf("tailspin metadata:\n");
             CFShow(metadata);
+        }
         if (metadata != NULL)
             CFRelease(metadata);
         if (data != NULL)
