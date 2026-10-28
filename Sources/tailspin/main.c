@@ -240,7 +240,8 @@ static int command_augment(int argc, char **argv) {
             return 1;
         }
     }
-    return 0;
+    fprintf(stderr, "tailspin: augmentation is not supported in this build\n");
+    return 1;
 }
 
 struct tailspin_chunk_header {

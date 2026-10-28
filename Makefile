@@ -78,6 +78,7 @@ test: all
 	@file=$$(mktemp); { printf '\007\130\242\131'; dd if=/dev/zero bs=1 count=12 2>/dev/null; printf '\007\130\242\131'; dd if=/dev/zero bs=1 count=12 2>/dev/null; printf '\355\130\221\361'; dd if=/dev/zero bs=1 count=12 2>/dev/null; } > $$file; $(TAILSPIN) stat -s $$file | grep -q '^0x59a25807 2$$'; rm -f $$file
 	@file=$$(mktemp); { printf '\000\003\252\125\001\000\000\000\000\000\000\000\000\000\000\000'; printf '\023\200\000\000\001\000\000\000\060\000\000\000\000\000\000\000'; dd if=/dev/zero bs=1 count=48 2>/dev/null; printf '\006\200\000\000\001\000\004\000\116\044\000\000\000\000\000\000'; dd if=/dev/zero bs=1 count=9294 2>/dev/null; } > $$file; $(TAILSPIN) stat -v $$file | grep -q 'Format: Apple tailspin'; rm -f $$file
 	@! $(TAILSPIN) augment >/dev/null 2>&1
+	@file=$$(mktemp); ! $(TAILSPIN) augment -s $$file >/dev/null 2>&1; rm -f $$file
 	@$(TAILSPIN) save --no-symbolicate --gather-os-logs --gather-os-signposts --scrub-output --cputrace >/dev/null 2>&1; test $$? -eq 64
 	@$(TAILSPIN) save --for-last-seconds invalid >/dev/null 2>&1; test $$? -eq 64
 	@$(TAILSPIN) save --for-last-seconds 18446744073709551615 >/dev/null 2>&1; test $$? -eq 64
