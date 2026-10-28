@@ -216,7 +216,6 @@ static int command_augment(int argc, char **argv) {
     int option;
     int requested = 0;
     int with_os_logs = 0;
-    int other_augmentation = 0;
     const char *archive_path = NULL;
     static const struct option options[] = {
         {"with-symbols", no_argument, NULL, 's'},
@@ -232,7 +231,6 @@ static int command_augment(int argc, char **argv) {
     while ((option = getopt_long(argc, argv, "sdatlL:", options, NULL)) != -1) {
         if (option == 's' || option == 'd' || option == 'a' || option == 't') {
             requested = 1;
-            other_augmentation = 1;
         } else if (option == 'l') {
             requested = 1;
             with_os_logs = 1;
