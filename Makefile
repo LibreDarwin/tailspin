@@ -25,7 +25,7 @@ $(KTRACE_LIB):
 
 $(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ) $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -framework CoreFoundation -o $@ $^
 
 $(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o $(OBJDIR)/tailspin_state.o $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)

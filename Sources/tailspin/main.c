@@ -4,6 +4,7 @@
 #include "../common/tailspin_state.h"
 #include "../common/tailspin_capture.h"
 
+#include <CoreFoundation/CoreFoundation.h>
 #include <errno.h>
 #include <getopt.h>
 #include <mach/mach_time.h>
@@ -241,6 +242,7 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
     size_t header_chunk_count = 0;
     size_t i;
     uint64_t metadata_size = 0;
+    size_t metadata_offset = 0;
     struct type_count header_chunks[32];
     (void)sort_by_frequency;
     if (header_length > length - 16 || header_length > SIZE_MAX - 16) {
@@ -292,6 +294,7 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
         }
         if (tag == 0x9003) {
             metadata_size += payload_length;
+            metadata_offset = offset + sizeof(struct tailspin_chunk_header);
             goto next_chunk;
         }
         for (index = 0; index < chunk_count; index++)
@@ -330,6 +333,20 @@ next_chunk:
                (unsigned long long)chunks[i].size);
     if (metadata_size != 0)
         printf("metadata chunk: %llu bytes\n", (unsigned long long)metadata_size);
+    if (metadata_size != 0 && metadata_offset <= length &&
+        metadata_size <= length - metadata_offset) {
+        CFDataRef data = CFDataCreate(kCFAllocatorDefault,
+                                      buffer + metadata_offset,
+                                      (CFIndex)metadata_size);
+        CFPropertyListRef metadata = CFPropertyListCreateWithData(
+            kCFAllocatorDefault, data, kCFPropertyListImmutable, NULL, NULL);
+        if (metadata != NULL)
+            CFShow(metadata);
+        if (metadata != NULL)
+            CFRelease(metadata);
+        if (data != NULL)
+            CFRelease(data);
+    }
     return 0;
 }
 
