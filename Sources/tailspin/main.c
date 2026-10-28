@@ -377,6 +377,24 @@ next_chunk:
             ktrace_file_close(trace_file);
         }
     }
+    if (verbose) {
+        ktrace_file_t trace_file = ktrace_file_open(path, 0);
+        uint64_t earliest;
+        uint64_t latest;
+        uint32_t numerator;
+        uint32_t denominator;
+        if (trace_file != NULL &&
+            ktrace_file_earliest_timestamp(trace_file, &earliest) == 0 &&
+            ktrace_file_latest_timestamp(trace_file, &latest) == 0 &&
+            ktrace_file_timebase(trace_file, &numerator, &denominator) == 0 &&
+            latest >= earliest && denominator != 0) {
+            long double seconds = ((long double)(latest - earliest) * numerator) /
+                                  ((long double)denominator * 1000000000.0L);
+            printf("Amount of ktrace history collected: %.2Lf s\n", seconds);
+        }
+        if (trace_file != NULL)
+            ktrace_file_close(trace_file);
+    }
     return 0;
 }
 
