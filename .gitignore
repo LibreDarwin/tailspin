@@ -6,6 +6,7 @@
 build/
 Build/
 local/
+.slim/deepwork/
 xcuserdata/
 *.xcworkspace
 __pycache__/
