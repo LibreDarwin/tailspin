@@ -3,10 +3,12 @@
 
 #include "../common/tailspin_state.h"
 #include "../common/tailspin_capture.h"
+#include "../libtailspin/tailspin_log.h"
 #include "ktrace.h"
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <mach/mach_time.h>
 #include <stdint.h>
@@ -14,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 static void usage(FILE *stream) {
     fprintf(stream, "usage: tailspin info|enable|disable|set|reset|save|augment|stat ...\n");
@@ -212,6 +215,9 @@ static int command_save(int argc, char **argv) {
 static int command_augment(int argc, char **argv) {
     int option;
     int requested = 0;
+    int with_os_logs = 0;
+    int other_augmentation = 0;
+    const char *archive_path = NULL;
     static const struct option options[] = {
         {"with-symbols", no_argument, NULL, 's'},
         {"dsymForUUID", no_argument, NULL, 'd'},
@@ -224,21 +230,55 @@ static int command_augment(int argc, char **argv) {
 
     optind = 1;
     while ((option = getopt_long(argc, argv, "sdatlL:", options, NULL)) != -1) {
-        if (option == 's' || option == 'd' || option == 'a' || option == 't' ||
-            option == 'l' || option == 'L')
+        if (option == 's' || option == 'd' || option == 'a' || option == 't') {
             requested = 1;
-        else
+            other_augmentation = 1;
+        } else if (option == 'l') {
+            requested = 1;
+            with_os_logs = 1;
+        } else if (option == 'L') {
+            requested = 1;
+            archive_path = optarg;
+        } else {
             return 64;
+        }
     }
     if (!requested || optind >= argc)
         return 64;
-    for (; optind < argc; optind++) {
+    if (with_os_logs && archive_path == NULL)
+        return 64;
+    for (int index = optind; index < argc; index++) {
         struct stat file_stat;
-        if (stat(argv[optind], &file_stat) != 0 || !S_ISREG(file_stat.st_mode)) {
+        if (stat(argv[index], &file_stat) != 0 || !S_ISREG(file_stat.st_mode)) {
             fprintf(stderr, "tailspin: unable to open %s for augmenting: %s\n",
-                    argv[optind], errno == 0 ? "not a regular file" : strerror(errno));
+                    argv[index], errno == 0 ? "not a regular file" : strerror(errno));
             return 1;
         }
+    }
+    if (with_os_logs && other_augmentation) {
+        fprintf(stderr, "tailspin: log augmentation cannot be combined with other augmentation options\n");
+        return 64;
+    }
+    if (with_os_logs) {
+        for (; optind < argc; optind++) {
+            int fd = open(argv[optind], O_RDWR);
+            if (fd < 0) {
+                fprintf(stderr, "tailspin: unable to open %s for augmenting: %s\n",
+                        argv[optind], strerror(errno));
+                return 1;
+            }
+            int result = tailspin_append_os_logs(fd, archive_path);
+            close(fd);
+            if (result != 0) {
+                fprintf(stderr, "tailspin: unable to augment %s with OS logs: %s\n",
+                        argv[optind], strerror(result));
+                return 1;
+            }
+        }
+        return 0;
+    }
+    for (; optind < argc; optind++) {
+        (void)argv[optind];
     }
     fprintf(stderr, "tailspin: augmentation is not supported in this build\n");
     return 1;

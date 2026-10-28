@@ -15,17 +15,18 @@ CFLAGS := $(OPT) -std=c11 -D_DARWIN_C_SOURCE -isysroot "$(SDK)" -I Sources/commo
 TAILSPIN := $(BUILD_DIR)/tailspin
 TAILSPIND := $(BUILD_DIR)/tailspind
 LIBTAILSPIN := $(BUILD_DIR)/libtailspin.dylib
+TAILSPIN_LOG_OBJ := $(OBJDIR)/tailspin_log.o
 STATE_OBJ := $(OBJDIR)/tailspin_state.o $(OBJDIR)/tailspin_capture.o
-LIBTAILSPIN_OBJ := $(OBJDIR)/tailspin_library.o $(OBJDIR)/tailspin_exports.o $(OBJDIR)/tailspin_state_pic.o $(OBJDIR)/tailspin_capture_pic.o
+LIBTAILSPIN_OBJ := $(OBJDIR)/tailspin_library.o $(OBJDIR)/tailspin_exports.o $(OBJDIR)/tailspin_log_pic.o $(OBJDIR)/tailspin_state_pic.o $(OBJDIR)/tailspin_capture_pic.o
 
 all: $(KTRACE_LIB) $(TAILSPIN) $(TAILSPIND) $(LIBTAILSPIN)
 
 $(KTRACE_LIB):
 	$(MAKE) -C "$(KTRACE_ROOT)" all
 
-$(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ) $(KTRACE_LIB)
+$(TAILSPIN): $(OBJDIR)/tailspin_main.o $(STATE_OBJ) $(TAILSPIN_LOG_OBJ) $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -framework CoreFoundation -o $@ $^
+	$(CC) $(CFLAGS) -framework CoreFoundation -framework Foundation -o $@ $^
 
 $(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o $(OBJDIR)/tailspin_state.o $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
@@ -33,7 +34,7 @@ $(TAILSPIND): $(OBJDIR)/tailspind_main.o $(OBJDIR)/tailspin_capture.o $(OBJDIR)/
 
 $(LIBTAILSPIN): $(LIBTAILSPIN_OBJ) $(KTRACE_LIB)
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -dynamiclib -install_name /usr/lib/libtailspin.dylib -o $@ $^
+	$(CC) $(CFLAGS) -dynamiclib -install_name /usr/lib/libtailspin.dylib -framework Foundation -o $@ $^
 
 $(OBJDIR)/tailspin_main.o: Sources/tailspin/main.c Sources/common/tailspin_state.h
 	@mkdir -p $(OBJDIR)
@@ -51,6 +52,10 @@ $(OBJDIR)/tailspin_capture.o: Sources/common/tailspin_capture.c Sources/common/t
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ Sources/common/tailspin_capture.c
 
+$(OBJDIR)/tailspin_log.o: Sources/libtailspin/tailspin_log.m Sources/libtailspin/tailspin_log.h
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -fobjc-arc -fblocks -c -o $@ Sources/libtailspin/tailspin_log.m
+
 $(OBJDIR)/tailspin_library.o: Sources/libtailspin/tailspin_library.c Sources/libtailspin/tailspin_library.h Sources/common/tailspin_private_abi.h
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -fPIC -fblocks -c -o $@ Sources/libtailspin/tailspin_library.c
@@ -66,6 +71,10 @@ $(OBJDIR)/tailspin_state_pic.o: Sources/common/tailspin_state.c Sources/common/t
 $(OBJDIR)/tailspin_capture_pic.o: Sources/common/tailspin_capture.c Sources/common/tailspin_capture.h
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -fPIC -c -o $@ Sources/common/tailspin_capture.c
+
+$(OBJDIR)/tailspin_log_pic.o: Sources/libtailspin/tailspin_log.m Sources/libtailspin/tailspin_log.h
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -fPIC -fobjc-arc -fblocks -c -o $@ Sources/libtailspin/tailspin_log.m
 
 test: all
 	@config=$$(mktemp -d); TAILSPIN_CONFIG_PATH=$$config/config $(TAILSPIN) enable
