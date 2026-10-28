@@ -238,14 +238,13 @@ static int command_augment(int argc, char **argv) {
             with_os_logs = 1;
         } else if (option == 'L') {
             requested = 1;
+            with_os_logs = 1;
             archive_path = optarg;
         } else {
             return 64;
         }
     }
     if (!requested || optind >= argc)
-        return 64;
-    if (with_os_logs && archive_path == NULL)
         return 64;
     for (int index = optind; index < argc; index++) {
         struct stat file_stat;

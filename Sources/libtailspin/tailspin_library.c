@@ -4,6 +4,7 @@
 #include "../common/tailspin_private_abi.h"
 #include "../common/tailspin_capture.h"
 #include "../common/tailspin_state.h"
+#include "tailspin_log.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -370,15 +371,13 @@ bool tailspin_dump_output(int output_fd, dispatch_queue_t queue,
 
 void tailspin_augment_output(int output_fd, const char *path, dispatch_queue_t queue,
                              tailspin_private_completion_t completion) {
-    (void)output_fd;
-    (void)path;
-    if (queue == NULL) {
+    void (^work)(void) = ^{
+        bool success = tailspin_append_os_logs(output_fd, path) == 0;
         if (completion != NULL)
-            completion(false);
-        return;
-    }
-    dispatch_async(queue, ^{
-        if (completion != NULL)
-            completion(false);
-    });
+            completion(success);
+    };
+    if (queue == NULL)
+        work();
+    else
+        dispatch_async(queue, work);
 }

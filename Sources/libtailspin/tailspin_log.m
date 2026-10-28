@@ -59,8 +59,6 @@ int tailspin_append_os_logs(int output_fd, const char *archive_path) {
     __block int completion_result = 0;
     __block struct tailspin_log_context context;
 
-    if (archive_path == NULL)
-        return EINVAL;
     framework = dlopen("/System/Library/PrivateFrameworks/LoggingSupport.framework/LoggingSupport",
                        RTLD_NOW);
     if (framework == NULL)
@@ -75,15 +73,20 @@ int tailspin_append_os_logs(int output_fd, const char *archive_path) {
     }
 
     @autoreleasepool {
-        archive_url = [NSURL fileURLWithPath:@(archive_path) isDirectory:YES];
         store_class = NSClassFromString(@"OSLogEventStore");
         serializer_class = NSClassFromString(@"OSLogEventSerializer");
         if (store_class == Nil || serializer_class == Nil) {
             ktrace_file_close(file);
             return ENOTSUP;
         }
-        store = ((msg_id_id_t)objc_msgSend)(store_class,
-                                             @selector(storeWithArchiveURL:), archive_url);
+        if (archive_path != NULL) {
+            archive_url = [NSURL fileURLWithPath:@(archive_path) isDirectory:YES];
+            store = ((msg_id_id_t)objc_msgSend)(store_class,
+                                                 @selector(storeWithArchiveURL:), archive_url);
+        } else {
+            store = ((id (*)(id, SEL))objc_msgSend)(store_class,
+                                                    @selector(localStore));
+        }
         if (store == nil) {
             ktrace_file_close(file);
             return ENOENT;
