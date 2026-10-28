@@ -209,6 +209,32 @@ static int command_save(int argc, char **argv) {
     return size == 0 ? 1 : 0;
 }
 
+static int command_augment(int argc, char **argv) {
+    int option;
+    int requested = 0;
+    static const struct option options[] = {
+        {"with-symbols", no_argument, NULL, 's'},
+        {"dsymForUUID", no_argument, NULL, 'd'},
+        {"collect-ariadne-plists", no_argument, NULL, 'a'},
+        {"collect-trials", no_argument, NULL, 't'},
+        {"with-os-signposts-logs", no_argument, NULL, 'l'},
+        {"log-archive-path", required_argument, NULL, 'L'},
+        {NULL, 0, NULL, 0}
+    };
+
+    optind = 1;
+    while ((option = getopt_long(argc, argv, "sdatlL:", options, NULL)) != -1) {
+        if (option == 's' || option == 'd' || option == 'a' || option == 't' ||
+            option == 'l' || option == 'L')
+            requested = 1;
+        else
+            return 64;
+    }
+    if (!requested || optind >= argc)
+        return 64;
+    return 0;
+}
+
 struct tailspin_chunk_header {
     uint32_t tag;
     uint32_t version;
@@ -538,8 +564,7 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[1], "stat") == 0) {
         result = command_stat(argc - 1, argv + 1);
     } else if (strcmp(argv[1], "augment") == 0) {
-        if (argc < 3) result = 64;
-        else result = 0;
+        result = command_augment(argc - 1, argv + 1);
     } else {
         usage(stderr);
         result = 64;
