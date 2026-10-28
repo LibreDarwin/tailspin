@@ -237,6 +237,7 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
     size_t offset;
     size_t chunk_count = 0;
     size_t i;
+    uint64_t metadata_size = 0;
     (void)sort_by_frequency;
     if (header_length > length - 16 || header_length > SIZE_MAX - 16) {
         fprintf(stderr, "tailspin: malformed tailspin header in %s\n", path);
@@ -257,6 +258,10 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
             fprintf(stderr, "tailspin: malformed tailspin chunk in %s\n", path);
             return 1;
         }
+        if (tag == 0x9003) {
+            metadata_size += payload_length;
+            goto next_chunk;
+        }
         for (index = 0; index < chunk_count; index++)
             if (chunks[index].tag == tag)
                 break;
@@ -270,6 +275,7 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
             chunks[index].size += payload_length;
             chunks[index].count++;
         }
+next_chunk:
         offset += sizeof(struct tailspin_chunk_header) + (size_t)payload_length;
         if (offset > SIZE_MAX - 7)
             return 1;
@@ -283,6 +289,8 @@ static int command_stat_tailspin(const char *path, const unsigned char *buffer,
     for (i = 0; i < chunk_count; i++)
         printf("0x%08x %zu chunks %llu bytes\n", chunks[i].tag, chunks[i].count,
                (unsigned long long)chunks[i].size);
+    if (metadata_size != 0)
+        printf("metadata chunk: %llu bytes\n", (unsigned long long)metadata_size);
     return 0;
 }
 
